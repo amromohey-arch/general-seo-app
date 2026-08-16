@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>618 Media — SEO Article Tool v3</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    :root {
+      --bg:#080808;--surface:#101010;--elevated:#161616;
+      --border:#1e1e1e;--border-hi:#2a2a2a;
+      --text:#e2e2dc;--muted:#6a6a62;
+      --amber:#e8a020;--amber-dim:#9a6b10;
+      --green:#22c55e;--red:#ef4444;--blue:#60a5fa;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Source Serif 4',Georgia,serif;min-height:100vh;display:flex}
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border-hi);border-radius:2px}
+
+    /* Sidebar */
+    .sidebar{width:240px;min-height:100vh;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:hidden}
+
+    .mobile-menu-btn{display:none}
+    .mobile-backdrop{display:none}
+    .logo-wrap{padding:20px 18px 16px;border-bottom:1px solid var(--border)}
+    .logo-mark{font-family:'Syne',sans-serif;font-weight:800;font-size:1.35rem;color:var(--amber);letter-spacing:-.02em}
+    .logo-sub{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:2px}
+    .sc-block{padding:12px 18px;border-bottom:1px solid var(--border)}
+    .sc-label{font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+    .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+    .dot-green{background:var(--green);box-shadow:0 0 6px var(--green)}
+    .dot-red{background:var(--red)}
+    .sc-badge{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:.65rem}
+    .btn-sc{margin-top:8px;width:100%;background:transparent;border:1px solid var(--border-hi);color:var(--text);font-family:'DM Mono',monospace;font-size:.62rem;padding:6px 10px;cursor:pointer;text-align:left;transition:border-color .2s,color .2s}
+    .btn-sc:hover{border-color:var(--amber);color:var(--amber)}
+
+    /* Sidebar tabs */
+    .sidebar-tabs{display:flex;border-bottom:1px solid var(--border)}
+    .stab{flex:1;font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;padding:9px 0;background:transparent;border:none;color:var(--muted);cursor:pointer;transition:color .2s}
+    .stab.active{color:var(--amber);border-bottom:2px solid var(--amber)}
+    .sidebar-panel{flex:1;overflow-y:auto;padding:14px 16px}
+    .art-item{padding:9px 10px;border:1px solid var(--border);margin-bottom:7px;cursor:default;transition:border-color .15s}
+    .art-item:hover{border-color:var(--border-hi)}
+    .art-title{font-size:.72rem;color:var(--text);line-height:1.3;margin-bottom:3px}
+    .art-meta{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px}
+    .art-rating{font-family:'DM Mono',monospace;font-size:.58rem}
+    .funnel-badge{font-family:'DM Mono',monospace;font-size:.54rem;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border:1px solid var(--border-hi);border-radius:2px}
+    .funnel-tofu{color:var(--blue);border-color:var(--blue)}
+    .funnel-mofu{color:var(--amber);border-color:var(--amber)}
+    .funnel-bofu{color:var(--green);border-color:var(--green)}
+    .funnel-none,.funnel-unclassified{color:var(--muted)}
+    .rating-good{color:var(--green)}
+    .rating-bad{color:var(--red)}
+    .rating-mid{color:var(--amber)}
+    .art-dl{color:var(--amber-dim);text-decoration:none;font-family:'DM Mono',monospace;font-size:.56rem}
+    .art-dl:hover{color:var(--amber)}
+    .empty-msg{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);text-align:center;padding:20px 0;line-height:1.7}
+    .draft-item{padding:9px 10px;border:1px solid var(--border);margin-bottom:7px;cursor:pointer;transition:border-color .15s}
+    .draft-item:hover{border-color:var(--amber-dim)}
+    .draft-title{font-size:.72rem;color:var(--text);line-height:1.3;margin-bottom:3px}
+    .draft-meta{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted)}
+
+    /* Pending review queue */
+    .pend-item{padding:9px 10px;border:1px solid var(--border);margin-bottom:7px;cursor:pointer;transition:border-color .15s}
+    .pend-item:hover{border-color:var(--amber)}
+    .pend-title{font-size:.72rem;color:var(--text);line-height:1.3;margin-bottom:3px}
+    .pend-meta{font-family:'DM Mono',monospace;font-size:.55rem;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+    .pend-score{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--amber)}
+
+    .pipe-controls{display:flex;flex-direction:column;gap:7px}
+    .pipe-btn{width:100%;background:transparent;border:1px solid var(--border-hi);color:var(--text);font-family:'DM Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;padding:10px;cursor:pointer;transition:border-color .15s}
+    .pipe-btn:hover:not(:disabled){border-color:var(--amber)}
+    .pipe-btn:disabled{opacity:.5;cursor:not-allowed}
+    .pipe-btn-primary{background:var(--amber);border-color:var(--amber);color:#1a0f00;font-weight:600}
+    .pipe-btn-primary:hover:not(:disabled){background:var(--amber-dim)}
+    .pipe-msg{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--amber-dim);margin-top:8px;line-height:1.5}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto}
+    .modal-box{background:var(--surface);border:1px solid var(--border-hi);max-width:820px;width:100%;padding:28px}
+    .modal-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.1rem;color:var(--text);margin-bottom:4px}
+    .modal-sub{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:18px}
+    .modal-section-lbl{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin:18px 0 8px}
+    .modal-close{position:absolute;top:20px;right:24px;background:transparent;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer}
+    .modal-close:hover{color:var(--text)}
+    .preview-frame{width:100%;height:420px;border:1px solid var(--border);background:#fff}
+    .beat{border:1px solid var(--border);padding:9px 12px;margin-bottom:6px}
+    .beat-head{font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.08em;color:var(--amber-dim);margin-bottom:4px}
+    .beat-line{font-size:.78rem;color:var(--text);margin-bottom:3px}
+    .beat-visual{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted)}
+    .caption-box{background:var(--elevated);border:1px solid var(--border);padding:12px;font-family:'DM Mono',monospace;font-size:.68rem;color:var(--text);white-space:pre-wrap;line-height:1.6;position:relative}
+    .copy-btn{font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.08em;background:transparent;border:1px solid var(--border-hi);color:var(--muted);padding:4px 9px;cursor:pointer;margin-top:8px}
+    .copy-btn:hover{border-color:var(--amber);color:var(--amber)}
+    .modal-actions{display:flex;gap:10px;margin-top:22px}
+    .btn-approve{flex:1;background:var(--green);border:none;color:#08130a;font-family:'DM Mono',monospace;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;padding:11px;cursor:pointer}
+    .btn-reject{flex:1;background:transparent;border:1px solid var(--red);color:var(--red);font-family:'DM Mono',monospace;font-weight:600;font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;padding:11px;cursor:pointer}
+
+    /* Main */
+    .main{flex:1;max-width:860px;padding:42px 50px;overflow-y:auto;padding-bottom:80px}
+
+    /* Steps */
+    .steps-bar{display:flex;align-items:center;margin-bottom:40px;overflow-x:auto;padding-bottom:4px}
+    .step-item{display:flex;align-items:center;gap:5px;flex-shrink:0}
+    .step-num{width:22px;height:22px;border-radius:50%;border:1px solid var(--border-hi);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);flex-shrink:0;transition:all .3s}
+    .step-num.active{border-color:var(--amber);background:var(--amber);color:#000;font-weight:700}
+    .step-num.done{border-color:var(--green);background:var(--green);color:#000}
+    .step-label{font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap}
+    .step-label.active{color:var(--amber)}
+    .step-label.done{color:var(--green)}
+    .step-conn{flex:1;height:1px;background:var(--border);margin:0 8px;min-width:10px}
+
+    /* Typography */
+    .eyebrow{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.15em;color:var(--amber);margin-bottom:6px}
+    .section-title{font-family:'Syne',sans-serif;font-weight:700;font-size:1.65rem;letter-spacing:-.02em;color:var(--text);margin-bottom:8px;line-height:1.2}
+    .section-desc{color:var(--muted);font-size:.86rem;line-height:1.6;max-width:500px;margin-bottom:26px}
+
+    /* Inputs */
+    .lbl{display:block;font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+    .txt-input{width:100%;background:var(--elevated);border:1px solid var(--border-hi);color:var(--text);font-family:'Source Serif 4',serif;font-size:.9rem;padding:10px 13px;outline:none;transition:border-color .2s}
+    .txt-input:focus{border-color:var(--amber)}
+    .txt-input::placeholder{color:var(--muted)}
+    textarea.txt-input{resize:vertical;min-height:70px}
+
+    /* Buttons */
+    .btn-primary{background:var(--amber);color:#000;font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;letter-spacing:.04em;padding:10px 24px;border:none;cursor:pointer;transition:opacity .2s,transform .15s}
+    .btn-primary:hover{opacity:.88;transform:translateY(-1px)}
+    .btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none}
+    .btn-secondary{background:transparent;color:var(--text);font-family:'DM Mono',monospace;font-size:.68rem;padding:9px 17px;border:1px solid var(--border-hi);cursor:pointer;transition:border-color .2s,color .2s}
+    .btn-secondary:hover{border-color:var(--amber);color:var(--amber)}
+    .btn-danger{background:transparent;color:var(--red);font-family:'DM Mono',monospace;font-size:.65rem;padding:7px 14px;border:1px solid var(--red);cursor:pointer;opacity:.7;transition:opacity .2s}
+    .btn-danger:hover{opacity:1}
+    .btn-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+
+    /* Stats */
+    .stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+    .stat-box{background:var(--surface);border:1px solid var(--border);padding:10px 15px;min-width:85px}
+    .stat-val{font-family:'Syne',sans-serif;font-weight:700;font-size:1.3rem;color:var(--amber)}
+    .stat-lbl{font-family:'DM Mono',monospace;font-size:.54rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-top:2px}
+
+    /* Cluster cards */
+    .cluster-grid{display:flex;flex-direction:column;gap:11px;margin-bottom:22px}
+    .cluster-card{border:1px solid var(--border);background:var(--surface);padding:16px 18px;cursor:pointer;transition:border-color .2s}
+    .cluster-card:hover{border-color:var(--border-hi)}
+    .cluster-card.selected{border-color:var(--amber);background:rgba(232,160,32,.04)}
+    .cluster-name{font-family:'Syne',sans-serif;font-weight:700;font-size:.92rem;margin-bottom:3px}
+    .cluster-angle{font-size:.78rem;color:var(--muted);margin-bottom:9px;line-height:1.5}
+    .cluster-badges{display:flex;gap:8px;flex-wrap:wrap}
+    .badge{font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.07em;padding:2px 7px;border:1px solid var(--border-hi);color:var(--muted)}
+    .badge-info{border-color:#3b82f6;color:#60a5fa}
+    .badge-comm{border-color:var(--amber-dim);color:var(--amber)}
+    .badge-comp{border-color:#a855f7;color:#c084fc}
+    .badge-low{border-color:var(--green);color:var(--green)}
+    .badge-med{border-color:var(--amber-dim);color:var(--amber)}
+    .badge-high{border-color:var(--red);color:var(--red)}
+    .ai-angle{margin-top:7px;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--blue);line-height:1.5;padding:4px 8px;border-left:2px solid #3b82f6;opacity:.8}
+    .paa-wrap{margin-top:9px;padding-top:9px;border-top:1px solid var(--border)}
+    .paa-lbl{font-family:'DM Mono',monospace;font-size:.54rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px}
+    .paa-q{font-size:.7rem;color:var(--muted);padding:2px 0}
+    .paa-q::before{content:'›  ';color:var(--amber-dim)}
+
+    /* Copilot */
+    .q-block{margin-bottom:24px}
+    .q-text{font-family:'Syne',sans-serif;font-weight:600;font-size:.92rem;margin-bottom:10px;line-height:1.4}
+    .mc-opt{display:flex;align-items:center;gap:10px;padding:7px 11px;border:1px solid var(--border-hi);margin-bottom:5px;cursor:pointer;transition:border-color .15s}
+    .mc-opt:hover{border-color:var(--border)}
+    .mc-opt.selected{border-color:var(--amber);background:rgba(232,160,32,.06)}
+    .mc-opt input[type="radio"],.mc-opt input[type="checkbox"]{accent-color:var(--amber);width:13px;height:13px}
+    .mc-label{font-size:.8rem;color:var(--text)}
+    .sel-input{width:100%;background:var(--elevated);border:1px solid var(--border-hi);color:var(--text);font-family:'Source Serif 4',serif;font-size:.86rem;padding:9px 13px;outline:none;appearance:none;cursor:pointer}
+    .sel-input:focus{border-color:var(--amber)}
+    input[type="range"]{width:100%;accent-color:var(--amber);cursor:pointer}
+    .scale-labels{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-top:5px}
+    .grid-table{width:100%;border-collapse:collapse;font-size:.76rem}
+    .grid-table th{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:1px solid var(--border);text-align:center}
+    .grid-table td{padding:7px;border-bottom:1px solid var(--border);text-align:center}
+    .grid-table td:first-child{text-align:left;color:var(--text);font-size:.78rem}
+    .grid-table input[type="radio"]{accent-color:var(--amber)}
+
+    /* Prompt Review */
+    .prompt-section{background:var(--surface);border:1px solid var(--border);padding:18px 20px;margin-bottom:14px}
+    .prompt-section-label{font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--amber);margin-bottom:10px;display:block}
+    .prompt-field{margin-bottom:12px}
+    .prompt-key{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);margin-bottom:4px}
+    .prompt-val{font-size:.82rem;color:var(--text);line-height:1.5}
+    .prompt-val.editable{background:var(--elevated);border:1px solid var(--border-hi);padding:8px 11px;outline:none;width:100%;font-family:'Source Serif 4',serif;font-size:.82rem;color:var(--text);transition:border-color .2s;resize:vertical}
+    .prompt-val.editable:focus{border-color:var(--amber)}
+    .kw-pill{font-family:'DM Mono',monospace;font-size:.58rem;padding:3px 8px;background:rgba(232,160,32,.08);border:1px solid rgba(232,160,32,.2);color:var(--amber);display:inline-block;margin:2px}
+    .paa-pill{font-family:'DM Mono',monospace;font-size:.58rem;padding:3px 8px;background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.2);color:var(--blue);display:inline-block;margin:2px}
+
+    /* SEO */
+    .char-hint{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--muted);margin-top:4px}
+    .char-ok{color:var(--green)}
+    .char-warn{color:var(--amber)}
+    .char-over{color:var(--red)}
+
+    /* Image */
+    .img-tabs{display:flex;gap:0;margin-bottom:14px}
+    .img-tab{font-family:'DM Mono',monospace;font-size:.63rem;padding:7px 17px;border:1px solid var(--border-hi);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+    .img-tab.active{border-color:var(--amber);color:var(--amber);background:rgba(232,160,32,.06)}
+    .img-preview{width:100%;aspect-ratio:16/9;background:var(--elevated);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:13px;border-radius:4px}
+    .img-preview img{width:100%;height:100%;object-fit:cover}
+    .img-ph-text{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted)}
+    .file-drop{border:2px dashed var(--border-hi);background:var(--elevated);padding:26px;text-align:center;cursor:pointer;transition:border-color .2s}
+    .file-drop:hover,.file-drop.dragging{border-color:var(--amber-dim)}
+    .file-drop-text{font-family:'DM Mono',monospace;font-size:.66rem;color:var(--muted)}
+    .file-drop-text strong{color:var(--amber)}
+    input[type="file"]{display:none}
+
+    /* Rating */
+    .rating-wrap{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+    .rating-btn{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--border-hi);background:transparent;color:var(--muted);font-family:'DM Mono',monospace;font-size:.78rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+    .rating-btn:hover{border-color:var(--amber);color:var(--amber)}
+    .rating-btn.selected-good{border-color:var(--green);background:var(--green);color:#000;font-weight:700}
+    .rating-btn.selected-bad{border-color:var(--red);background:var(--red);color:#fff;font-weight:700}
+    .rating-btn.selected-mid{border-color:var(--amber);background:var(--amber);color:#000;font-weight:700}
+
+    /* Preview */
+    .preview-frame-wrap{border:1px solid var(--border);background:#fff;margin-bottom:18px}
+    .preview-frame{width:100%;height:680px;border:none;display:block}
+    .preview-toolbar{display:flex;justify-content:space-between;align-items:center;padding:9px 13px;border-bottom:1px solid var(--border);background:var(--surface)}
+    .preview-title{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+    .revise-wrap{background:var(--surface);border:1px solid var(--border);padding:16px 18px;margin-bottom:14px}
+    .revise-title{font-family:'Syne',sans-serif;font-weight:700;font-size:.85rem;margin-bottom:10px;color:var(--text)}
+    .revise-tabs{display:flex;gap:0;margin-bottom:12px}
+    .rev-tab{font-family:'DM Mono',monospace;font-size:.6rem;padding:6px 15px;border:1px solid var(--border-hi);background:transparent;color:var(--muted);cursor:pointer;transition:all .15s}
+    .rev-tab.active{border-color:var(--amber);color:var(--amber);background:rgba(232,160,32,.06)}
+
+    /* Alerts */
+    .alert{padding:10px 13px;font-family:'DM Mono',monospace;font-size:.66rem;margin-bottom:14px;line-height:1.5}
+    .alert-error{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+    .alert-success{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.3);color:#86efac}
+    .alert-info{background:rgba(96,165,250,.08);border:1px solid rgba(96,165,250,.3);color:#93c5fd}
+    .dup-warn{background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);padding:12px 16px;margin-bottom:16px}
+    .dup-warn-t{font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--red);margin-bottom:4px}
+    .dup-warn-b{font-size:.73rem;color:var(--muted);line-height:1.5}
+
+    /* Loading */
+    .loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:52px 0;gap:13px}
+    .spinner{width:32px;height:32px;border:2px solid var(--border-hi);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{font-family:'DM Mono',monospace;font-size:.66rem;color:var(--muted);animation:pulse 1.5s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+    /* Progress bar */
+    .progress-bar{position:fixed;bottom:0;left:240px;right:0;background:var(--elevated);border-top:1px solid var(--border);padding:8px 20px;display:flex;align-items:center;gap:10px;z-index:100}
+    .progress-spinner{width:12px;height:12px;border:2px solid var(--border-hi);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+    .progress-text{font-family:'DM Mono',monospace;font-size:.63rem;color:var(--amber)}
+
+    hr{border:none;border-top:1px solid var(--border);margin:26px 0}
+    /* Mobile — placed last in the stylesheet on purpose, so it wins cascade
+       priority over every earlier same-specificity rule (.sidebar, .main, etc.)
+       when the screen is actually narrow enough to match. */
+    @media (max-width:860px){
+      body{display:block}
+      .mobile-menu-btn{
+        display:flex;align-items:center;justify-content:center;
+        position:fixed;top:14px;left:14px;z-index:60;
+        width:38px;height:38px;background:var(--surface);border:1px solid var(--border-hi);
+        color:var(--text);font-size:1.1rem;cursor:pointer;
+      }
+      .sidebar{
+        position:fixed;top:0;left:0;z-index:55;width:78vw;max-width:300px;
+        transform:translateX(-100%);transition:transform .22s ease;
+      }
+      .sidebar.open{transform:translateX(0)}
+      .mobile-backdrop{
+        display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;
+        opacity:0;pointer-events:none;transition:opacity .22s ease;
+      }
+      .mobile-backdrop.open{opacity:1;pointer-events:auto}
+      .main{width:100%;margin-left:0;padding:70px 18px 60px}
+      .modal-box{max-width:100%;padding:20px 16px}
+      .modal-overlay{padding:12px}
+    }
+  </style>
+</head>
+
+<body x-data="seoApp()" x-init="init()">
+
+  <button class="mobile-menu-btn" @click="mobileMenuOpen = !mobileMenuOpen" aria-label="Toggle menu">☰</button>
+  <div class="mobile-backdrop" :class="{open: mobileMenuOpen}" @click="mobileMenuOpen = false"></div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" :class="{open: mobileMenuOpen}">
+    <div class="logo-wrap">
+      <div class="logo-mark">618</div>
+      <div class="logo-sub">SEO Article Tool v3</div>
+    </div>
+    <div class="sc-block">
+      <div class="sc-label">Search Console</div>
+      <div class="sc-badge">
+        <span class="dot" :class="scConnected?'dot-green':'dot-red'"></span>
+        <span x-text="scConnected?'Connected':'Not connected'"></span>
+      </div>
+      <template x-if="!scConnected">
+        <button class="btn-sc" @click="connectSC()">→ Connect Google Account</button>
+      </template>
+      <template x-if="scConnected">
+        <button class="btn-sc" @click="disconnectSC()">× Disconnect</button>
+      </template>
+    </div>
+    <div class="sidebar-tabs">
+      <button class="stab" :class="{active:sideTab==='pending'}" @click="sideTab='pending'; mobileMenuOpen=false">Review<template x-if="pending.length"><span x-text="' ('+pending.length+')'"></span></template></button>
+      <button class="stab" :class="{active:sideTab==='articles'}" @click="sideTab='articles'; mobileMenuOpen=false">Articles</button>
+      <button class="stab" :class="{active:sideTab==='reels'}" @click="sideTab='reels'; mobileMenuOpen=false; loadReels()">Reels</button>
+      <button class="stab" :class="{active:sideTab==='drafts'}" @click="sideTab='drafts'; mobileMenuOpen=false">Drafts</button>
+    </div>
+    <div class="sidebar-panel">
+      <!-- Pending review tab -->
+      <template x-if="sideTab==='pending'">
+        <div>
+          <div class="pipe-controls">
+            <button class="pipe-btn" @click="runPipeline('discover')" :disabled="pipelineStatus.running">
+              <span x-show="!(pipelineStatus.running && pipelineStatus.job==='discover')">Check for new ideas</span>
+              <span x-show="pipelineStatus.running && pipelineStatus.job==='discover'">Searching…</span>
+            </button>
+            <button class="pipe-btn pipe-btn-primary" @click="runPipeline('generate')" :disabled="pipelineStatus.running">
+              <span x-show="!(pipelineStatus.running && pipelineStatus.job==='generate')">Generate articles now</span>
+              <span x-show="pipelineStatus.running && pipelineStatus.job==='generate'">Writing… (1-2 min)</span>
+            </button>
+            <button class="pipe-btn" @click="runPipeline('spotlight')" :disabled="pipelineStatus.running">
+              <span x-show="!(pipelineStatus.running && pipelineStatus.job==='spotlight')">Find an artist spotlight</span>
+              <span x-show="pipelineStatus.running && pipelineStatus.job==='spotlight'">Searching &amp; writing… (1-2 min)</span>
+            </button>
+          </div>
+          <template x-if="pipelineLastMsg">
+            <div class="pipe-msg" x-text="pipelineLastMsg"></div>
+          </template>
+          <div style="font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:14px 0 9px">Awaiting Review (<span x-text="pending.filter(p=>p.status==='pending').length"></span>)</div>
+          <template x-if="pending.filter(p=>p.status==='pending').length===0">
+            <div class="empty-msg">Nothing waiting.<br>The pipeline drops new drafts here.</div>
+          </template>
+          <template x-for="p in pending.filter(p=>p.status==='pending').slice().reverse()" :key="p.id">
+            <div class="pend-item" @click="viewPending(p)">
+              <div class="pend-title">
+                <template x-if="p.content_type==='spotlight'"><span style="color:var(--amber);font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;margin-right:6px">Spotlight</span></template>
+                <span x-text="p.seo_title||p.cluster?.cluster_name||'Untitled'"></span>
+              </div>
+              <div class="pend-meta">
+                <span x-text="(p.article?.word_count||0)+' words'"></span>
+                <span class="pend-score" x-text="p.score!=null ? ('score '+p.score) : ''"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+      <!-- Articles tab -->
+      <template x-if="sideTab==='articles'">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:9px">Articles (<span x-text="articles.length"></span>)</div>
+          <template x-if="articles.length===0">
+            <div class="empty-msg">No articles yet.<br>Generate your first →</div>
+          </template>
+          <template x-for="a in articles.slice().reverse()" :key="a.id">
+            <div class="art-item" style="cursor:pointer" @click="viewArticleEdit(a)">
+              <div class="art-title" x-text="a.seo_title||a.slug"></div>
+              <div class="art-meta">
+                <span x-text="a.word_count?a.word_count+' words':''"></span>
+                <template x-if="a.rating">
+                  <span class="art-rating" :class="a.rating>=7?'rating-good':a.rating>=5?'rating-mid':'rating-bad'" x-text="'★ '+a.rating+'/10'"></span>
+                </template>
+              </div>
+              <div class="art-meta" style="margin-top:4px">
+                <a :href="'/api/articles/'+a.id+'/download'" class="art-dl" target="_blank" @click.stop>↓ HTML</a>
+                <a :href="'/api/articles/'+a.id+'/summary-download'" class="art-dl" target="_blank" @click.stop>↓ Summary</a>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+      <!-- Reels tab -->
+      <template x-if="sideTab==='reels'">
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+            <div style="font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Reels (<span x-text="reels.length"></span>)</div>
+            <template x-if="reels.length">
+              <a href="/api/reels/download-all" target="_blank" style="font-family:'DM Mono',monospace;font-size:.56rem;color:var(--amber-dim);text-decoration:none">↓ Download all</a>
+            </template>
+          </div>
+          <template x-if="reelsLoading">
+            <div class="empty-msg">Loading…</div>
+          </template>
+          <template x-if="!reelsLoading && reels.length===0">
+            <div class="empty-msg">No reel scripts yet.<br>They're generated alongside articles.</div>
+          </template>
+          <template x-for="r in reels.slice().reverse()" :key="r.id">
+            <div class="art-item" style="cursor:pointer" @click="viewReel(r)">
+              <div class="art-title" x-text="r.seo_title"></div>
+              <div class="art-meta">
+                <span class="funnel-badge" :class="'funnel-'+(r.funnel_stage||'none').toLowerCase()" x-text="r.funnel_stage||'Unclassified'"></span>
+                <span x-text="r.total_duration"></span>
+                <span x-text="r.word_count ? (r.word_count+' words') : ''"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+      <!-- Drafts tab -->
+      <template x-if="sideTab==='drafts'">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:.56rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:9px">Drafts (<span x-text="drafts.length"></span>)</div>
+          <template x-if="drafts.length===0">
+            <div class="empty-msg">No saved drafts.<br>Progress saves automatically.</div>
+          </template>
+          <template x-for="d in drafts.slice().reverse()" :key="d.id">
+            <div class="draft-item" @click="resumeDraft(d)">
+              <div class="draft-title" x-text="d.topic||(d.seo_title||'Untitled draft')"></div>
+              <div class="draft-meta">
+                Step <span x-text="d.step"></span>/7 •
+                <span x-text="d.updated_at?d.updated_at.substring(0,10):''"></span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+    <a href="/logout" style="display:block;text-align:center;padding:11px;font-family:'DM Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);border-top:1px solid var(--border);text-decoration:none">Sign out</a>
+  </aside>
+
+  <!-- Pending review modal -->
+  <div class="modal-overlay" x-show="selectedPending" x-cloak @click.self="selectedPending=null" style="display:none">
+    <template x-if="selectedPending">
+      <div class="modal-box" style="position:relative">
+        <button class="modal-close" @click="selectedPending=null">×</button>
+        <div class="modal-title" x-text="selectedPending.seo_title"></div>
+        <div class="modal-sub">
+          <span x-text="(selectedPending.article?.word_count||0)+' words'"></span> ·
+          <span x-text="'score '+selectedPending.score"></span> ·
+          <span x-text="selectedPending.created_at?.substring(0,16).replace('T',' ')"></span>
+        </div>
+
+        <div class="modal-section-lbl">Article Preview</div>
+        <iframe class="preview-frame" :src="'/api/pending/'+selectedPending.id+'/preview?v='+previewNonce"></iframe>
+        <a :href="'/api/pending/'+selectedPending.id+'/preview'" target="_blank" style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--amber-dim)">Open full preview →</a>
+
+        <div class="modal-section-lbl">Image</div>
+        <div class="img-tabs">
+          <button class="img-tab" :class="{active:pendingImgTab==='upload'}" @click="pendingImgTab='upload'">Upload File</button>
+          <button class="img-tab" :class="{active:pendingImgTab==='url'}" @click="pendingImgTab='url'">Image URL</button>
+        </div>
+        <template x-if="pendingImgTab==='upload'">
+          <div>
+            <div class="file-drop" @click="$refs.pendingFileInput.click()">
+              <div class="file-drop-text"><strong>Click to browse</strong><br><span style="font-size:.58rem">JPG, PNG, WEBP — max 5MB</span></div>
+            </div>
+            <input type="file" x-ref="pendingFileInput" accept="image/*" @change="handlePendingFileSelect($event)" style="display:none">
+            <template x-if="pendingImageFileName"><div style="margin-top:7px;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--green)" x-text="'✓ '+pendingImageFileName"></div></template>
+          </div>
+        </template>
+        <template x-if="pendingImgTab==='url'">
+          <input class="txt-input" type="url" x-model="pendingImageUrl" placeholder="https://images.pexels.com/..." style="margin-top:8px">
+        </template>
+        <button class="copy-btn" style="margin-top:9px" @click="setPendingImage()" :disabled="pendingSettingImage || !(pendingImageUrl||pendingImageBase64)">
+          <span x-text="pendingSettingImage ? 'Setting…' : 'Set image'"></span>
+        </button>
+
+        <div class="modal-section-lbl">Request changes</div>
+        <textarea class="txt-input" style="min-height:70px" x-model="pendingFeedback" placeholder="e.g. Open with a stronger hook. Shorten the second paragraph. Fix the pricing example."></textarea>
+        <button class="copy-btn" style="margin-top:9px" @click="revisePendingArticle()" :disabled="pendingRevising || !pendingFeedback.trim()">
+          <span x-text="pendingRevising ? 'Applying…' : 'Apply feedback'"></span>
+        </button>
+
+        <template x-if="selectedPending.content_type==='spotlight' && (selectedPending.article?.sources||[]).length">
+          <div>
+            <div class="modal-section-lbl">Sources — check these before approving</div>
+            <template x-for="s in selectedPending.article.sources" :key="s.uri">
+              <div style="margin-bottom:5px">
+                <a :href="s.uri" target="_blank" style="font-family:'DM Mono',monospace;font-size:.64rem;color:var(--amber-dim)" x-text="(s.title||s.domain||s.uri)"></a>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div>
+          <div class="modal-section-lbl">Reel Script — <span x-text="selectedPending.video_script?.total_duration||''"></span> <span x-text="selectedPending.video_script?.word_count ? ('· '+selectedPending.video_script.word_count+' words') : ''"></span></div>
+          <template x-if="selectedPending.video_script?.funnel_stage">
+            <span class="funnel-badge" :class="'funnel-'+selectedPending.video_script.funnel_stage.toLowerCase()" x-text="selectedPending.video_script.funnel_stage" style="margin-bottom:8px;display:inline-block"></span>
+          </template>
+          <template x-if="!selectedPending.video_script || selectedPending.video_script.error">
+            <div class="empty-msg">Script generation failed for this one — approve the article and write it manually if needed.</div>
+          </template>
+          <template x-for="s in (selectedPending.video_script?.sections||[])" :key="s.label">
+            <div class="beat">
+              <div class="beat-head" x-text="s.label"></div>
+              <div class="beat-line" x-text="s.script"></div>
+              <div class="beat-visual" x-text="'Visual: '+s.visual"></div>
+            </div>
+          </template>
+          <template x-if="(selectedPending.video_script?.sections||[]).length">
+            <a class="copy-btn" style="display:inline-block;text-decoration:none;margin-top:6px" :href="'/api/pending/'+selectedPending.id+'/script-download'" target="_blank">↓ Download full script (.txt)</a>
+          </template>
+          <template x-if="selectedPending.video_script?.caption">
+            <div>
+              <div class="modal-section-lbl">Reel Caption</div>
+              <div class="caption-box" x-text="selectedPending.video_script.caption"></div>
+              <button class="copy-btn" @click="copyText(selectedPending.video_script.caption)">Copy caption</button>
+            </div>
+          </template>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-approve" @click="approvePending(selectedPending.id)">✓ Approve — save to Articles</button>
+          <button class="btn-reject" @click="rejectPending(selectedPending.id)">✕ Reject</button>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Reel viewer modal -->
+  <div class="modal-overlay" x-show="selectedReel" x-cloak @click.self="selectedReel=null" style="display:none">
+    <template x-if="selectedReel">
+      <div class="modal-box" style="position:relative">
+        <button class="modal-close" @click="selectedReel=null">×</button>
+        <div class="modal-title" x-text="selectedReel.seo_title"></div>
+        <div class="modal-sub">
+          <span class="funnel-badge" :class="'funnel-'+(selectedReel.funnel_stage||'none').toLowerCase()" x-text="selectedReel.funnel_stage||'Unclassified'"></span>
+          · <span x-text="selectedReel.total_duration"></span>
+          · <span x-text="selectedReel.word_count+' words'"></span>
+        </div>
+        <template x-if="selectedReel.funnel_reason">
+          <p style="font-size:.78rem;color:var(--muted);margin:6px 0 16px;line-height:1.5" x-text="selectedReel.funnel_reason"></p>
+        </template>
+
+        <template x-if="reelLoading">
+          <div class="empty-msg">Loading…</div>
+        </template>
+
+        <template x-if="!reelLoading && reelData">
+          <div>
+            <div class="modal-section-lbl">Full Script</div>
+            <template x-for="s in (reelData.video_script?.sections||[])" :key="s.label">
+              <div class="beat">
+                <div class="beat-head" x-text="s.label"></div>
+                <div class="beat-line" x-text="s.script"></div>
+                <div class="beat-visual" x-text="'Visual: '+s.visual"></div>
+              </div>
+            </template>
+
+            <template x-if="reelData.video_script?.caption">
+              <div>
+                <div class="modal-section-lbl">Caption</div>
+                <div class="caption-box" x-text="reelData.video_script.caption"></div>
+                <button class="copy-btn" @click="copyText(reelData.video_script.caption)">Copy caption</button>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div class="modal-actions">
+          <a :href="'/api/articles/'+selectedReel.id+'/script-download'" target="_blank" class="btn-approve" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">↓ Download script (.txt)</a>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Saved article edit modal -->
+  <div class="modal-overlay" x-show="selectedArticleEdit" x-cloak @click.self="selectedArticleEdit=null" style="display:none">
+    <template x-if="selectedArticleEdit">
+      <div class="modal-box" style="position:relative">
+        <button class="modal-close" @click="selectedArticleEdit=null">×</button>
+        <div class="modal-title" x-text="selectedArticleEdit.seo_title"></div>
+        <div class="modal-sub">
+          <span x-text="(selectedArticleEdit.word_count||0)+' words'"></span>
+        </div>
+
+        <template x-if="articleEditLoading">
+          <div class="empty-msg">Loading…</div>
+        </template>
+
+        <template x-if="!articleEditLoading">
+          <div>
+            <div class="modal-section-lbl">Article Preview</div>
+            <iframe class="preview-frame" :src="'/api/articles/'+selectedArticleEdit.id+'/preview?v='+previewNonce"></iframe>
+            <a :href="'/api/articles/'+selectedArticleEdit.id+'/preview'" target="_blank" style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--amber-dim)">Open full preview →</a>
+
+            <div class="modal-section-lbl">Image</div>
+            <div class="img-tabs">
+              <button class="img-tab" :class="{active:articleImgTab==='upload'}" @click="articleImgTab='upload'">Upload File</button>
+              <button class="img-tab" :class="{active:articleImgTab==='url'}" @click="articleImgTab='url'">Image URL</button>
+            </div>
+            <template x-if="articleImgTab==='upload'">
+              <div>
+                <div class="file-drop" @click="$refs.articleFileInput.click()">
+                  <div class="file-drop-text"><strong>Click to browse</strong><br><span style="font-size:.58rem">JPG, PNG, WEBP — max 5MB</span></div>
+                </div>
+                <input type="file" x-ref="articleFileInput" accept="image/*" @change="handleArticleFileSelect($event)" style="display:none">
+                <template x-if="articleImageFileName"><div style="margin-top:7px;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--green)" x-text="'✓ '+articleImageFileName"></div></template>
+              </div>
+            </template>
+            <template x-if="articleImgTab==='url'">
+              <input class="txt-input" type="url" x-model="articleImageUrl" placeholder="https://images.pexels.com/..." style="margin-top:8px">
+            </template>
+            <button class="copy-btn" style="margin-top:9px" @click="setArticleImage()" :disabled="articleSettingImage || !(articleImageUrl||articleImageBase64)">
+              <span x-text="articleSettingImage ? 'Setting…' : 'Set image'"></span>
+            </button>
+
+            <div class="modal-section-lbl">Request changes</div>
+            <textarea class="txt-input" style="min-height:70px" x-model="articleFeedback" placeholder="e.g. Open with a stronger hook. Shorten the second paragraph. Fix the pricing example."></textarea>
+            <button class="copy-btn" style="margin-top:9px" @click="reviseArticleEdit()" :disabled="articleRevising || !articleFeedback.trim()">
+              <span x-text="articleRevising ? 'Applying…' : 'Apply feedback'"></span>
+            </button>
+
+            <template x-if="(articleEditData?.video_script?.sections||[]).length">
+              <div>
+                <div class="modal-section-lbl">Reel Script — <span x-text="articleEditData.video_script.total_duration||''"></span> <span x-text="articleEditData.video_script.word_count ? ('· '+articleEditData.video_script.word_count+' words') : ''"></span></div>
+                <template x-if="articleEditData.video_script.funnel_stage">
+                  <span class="funnel-badge" :class="'funnel-'+articleEditData.video_script.funnel_stage.toLowerCase()" x-text="articleEditData.video_script.funnel_stage" style="margin-bottom:8px;display:inline-block"></span>
+                </template>
+                <template x-for="s in articleEditData.video_script.sections" :key="s.label">
+                  <div class="beat">
+                    <div class="beat-head" x-text="s.label"></div>
+                    <div class="beat-line" x-text="s.script"></div>
+                    <div class="beat-visual" x-text="'Visual: '+s.visual"></div>
+                  </div>
+                </template>
+                <a class="copy-btn" style="display:inline-block;text-decoration:none;margin-top:6px" :href="'/api/articles/'+selectedArticleEdit.id+'/script-download'" target="_blank">↓ Download full script (.txt)</a>
+                <template x-if="articleEditData.video_script.caption">
+                  <div>
+                    <div class="modal-section-lbl">Reel Caption</div>
+                    <div class="caption-box" x-text="articleEditData.video_script.caption"></div>
+                    <button class="copy-btn" @click="copyText(articleEditData.video_script.caption)">Copy caption</button>
+                  </div>
+                </template>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div class="modal-actions">
+          <a :href="'/api/articles/'+selectedArticleEdit.id+'/download'" target="_blank" class="btn-approve" style="text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">↓ Download HTML</a>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Steps bar -->
+    <div class="steps-bar">
+      <template x-for="(s,i) in steps" :key="i">
+        <div style="display:contents">
+          <div class="step-item">
+            <div class="step-num" :class="{active:step===i+1,done:step>i+1}" x-text="step>i+1?'✓':(i+1)"></div>
+            <div class="step-label" :class="{active:step===i+1,done:step>i+1}" x-text="s"></div>
+          </div>
+          <template x-if="i<steps.length-1"><div class="step-conn"></div></template>
+        </div>
+      </template>
+    </div>
+
+    <!-- STEP 1: Research -->
+    <div x-show="step===1" x-transition>
+      <div class="eyebrow">Step 1</div>
+      <h1 class="section-title">Keyword Research</h1>
+      <p class="section-desc">Enter a topic to find what people in Australia are actually searching for.</p>
+      <div style="margin-bottom:16px">
+        <label class="lbl">Topic or seed keyword</label>
+        <input class="txt-input" type="text" x-model="topic" placeholder="e.g. music video production, corporate video sydney, event filming" @keydown.enter="runResearch()">
+      </div>
+      <div class="btn-row">
+        <button class="btn-primary" @click="runResearch()" :disabled="!topic.trim()||loading" x-text="loading?'Researching…':'Find Keywords →'"></button>
+      </div>
+      <template x-if="loading&&step===1"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text" x-text="loadingMsg"></div></div></template>
+      <template x-if="error"><div class="alert alert-error" x-text="error"></div></template>
+    </div>
+
+    <!-- STEP 2: Clusters -->
+    <div x-show="step===2" x-transition>
+      <div class="eyebrow">Step 2</div>
+      <h1 class="section-title">Choose an Article Cluster</h1>
+      <p class="section-desc">Found <strong x-text="kwSources.total"></strong> keywords. Pick the article opportunity that best fits 618 Media right now.</p>
+      <div class="stats-row">
+        <div class="stat-box"><div class="stat-val" x-text="kwSources.autocomplete||0"></div><div class="stat-lbl">Autocomplete</div></div>
+        <div class="stat-box"><div class="stat-val" x-text="kwSources.search_console||0"></div><div class="stat-lbl">Search Console</div></div>
+        <div class="stat-box"><div class="stat-val" x-text="kwSources.ai_generated||0"></div><div class="stat-lbl">AI Expanded</div></div>
+      </div>
+      <template x-if="loading"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Clustering into article opportunities…</div></div></template>
+      <template x-if="!loading">
+        <div>
+          <div class="cluster-grid">
+            <template x-for="(c,i) in clusters" :key="i">
+              <div class="cluster-card" :class="{selected:selectedCluster===i}" @click="selectedCluster=i">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+                  <div class="cluster-name" x-text="c.cluster_name"></div>
+                  <span style="font-family:'DM Mono',monospace;font-size:.56rem;color:var(--amber);margin-left:10px;flex-shrink:0">Priority <span x-text="c.priority"></span>/5</span>
+                </div>
+                <div class="cluster-angle" x-text="c.article_angle"></div>
+                <div class="cluster-badges">
+                  <span class="badge" :class="'badge-'+(c.search_intent||'').substring(0,4)" x-text="c.search_intent"></span>
+                  <span class="badge" :class="'badge-'+(c.difficulty||'').substring(0,3)" x-text="'Competition: '+(c.difficulty||'')"></span>
+                  <span class="badge" x-text="(c.secondary_keywords||[]).length+' keywords'"></span>
+                </div>
+                <div class="ai-angle" x-text="'AI search: '+(c.ai_search_angle||'')"></div>
+                <div class="paa-wrap" x-show="selectedCluster===i">
+                  <div class="paa-lbl">People Also Ask</div>
+                  <template x-for="q in (c.paa_questions||[])" :key="q"><div class="paa-q" x-text="q"></div></template>
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="btn-row">
+            <button class="btn-primary" @click="proceedToCopilot()" :disabled="selectedCluster===null">Next: Copilot Questions →</button>
+            <button class="btn-secondary" @click="step=1">← Back</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- STEP 3: Copilot -->
+    <div x-show="step===3" x-transition>
+      <div class="eyebrow">Step 3 — Copilot</div>
+      <h1 class="section-title">Clarify the Article</h1>
+      <p class="section-desc">These questions are for you — the author. Your answers shape what the AI writes about and how it frames 618 Media's perspective.</p>
+      <template x-if="duplicateCheck&&duplicateCheck.is_duplicate">
+        <div class="dup-warn">
+          <div class="dup-warn-t">⚠ Similar article already exists</div>
+          <div class="dup-warn-b">Overlaps with: <template x-for="d in duplicateCheck.similar_articles" :key="d.id"><span x-text="' &ldquo;'+(d.seo_title||d.slug)+'&rdquo;'"></span></template>. Consider a different angle or proceed.</div>
+        </div>
+      </template>
+      <template x-if="loading"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Generating questions…</div></div></template>
+      <template x-if="!loading&&copilotQuestions.length>0">
+        <div>
+          <template x-for="q in copilotQuestions" :key="q.id">
+            <div class="q-block">
+              <div class="q-text" x-text="q.question"></div>
+              <template x-if="q.format==='multiple_choice'">
+                <div>
+                  <template x-for="opt in (q.options||[])" :key="opt">
+                    <label class="mc-opt" :class="{selected:answers[q.id]===opt}" @click="answers[q.id]=opt">
+                      <input type="radio" :name="q.id" :value="opt" :checked="answers[q.id]===opt">
+                      <span class="mc-label" x-text="opt"></span>
+                    </label>
+                  </template>
+                  <label class="mc-opt" :class="{selected:answers[q.id]==='__other__'}" @click="answers[q.id]='__other__'">
+                    <input type="radio" :name="q.id" value="__other__" :checked="answers[q.id]==='__other__'">
+                    <span class="mc-label">Other (type below)</span>
+                  </label>
+                  <input class="txt-input" type="text" x-show="answers[q.id]==='__other__'" style="margin-top:7px" :placeholder="q.placeholder||'Type your answer…'" x-model="answers[q.id+'_text']">
+                </div>
+              </template>
+              <template x-if="q.format==='checkboxes'">
+                <div>
+                  <template x-for="opt in (q.options||[])" :key="opt">
+                    <label class="mc-opt" @click.prevent="toggleCheck(q.id,opt)">
+                      <input type="checkbox" :checked="(answers[q.id+'_cb']||[]).includes(opt)">
+                      <span class="mc-label" x-text="opt"></span>
+                    </label>
+                  </template>
+                </div>
+              </template>
+              <template x-if="q.format==='dropdown'">
+                <select class="sel-input" x-model="answers[q.id]">
+                  <option value="">Select…</option>
+                  <template x-for="opt in (q.options||[])" :key="opt"><option :value="opt" x-text="opt"></option></template>
+                </select>
+              </template>
+              <template x-if="q.format==='linear_scale'">
+                <div>
+                  <input type="range" min="1" max="5" :value="answers[q.id]||3" @input="answers[q.id]=$event.target.value">
+                  <div class="scale-labels">
+                    <span x-text="q.scale_min||'1'"></span>
+                    <span style="color:var(--amber);font-family:'DM Mono',monospace;font-size:.66rem" x-text="answers[q.id]||3"></span>
+                    <span x-text="q.scale_max||'5'"></span>
+                  </div>
+                </div>
+              </template>
+              <template x-if="q.format==='grid'">
+                <table class="grid-table">
+                  <thead><tr><th></th><template x-for="col in (q.grid_cols||q.options||[])" :key="col"><th x-text="col"></th></template></tr></thead>
+                  <tbody>
+                    <template x-for="row in (q.grid_rows||q.options||[])" :key="row">
+                      <tr>
+                        <td x-text="row"></td>
+                        <template x-for="col in (q.grid_cols||q.options||[])" :key="col">
+                          <td><input type="radio" :name="q.id+'_'+row" :value="col" :checked="(answers[q.id+'_grid']||{})[row]===col" @change="setGridAnswer(q.id,row,col)"></td>
+                        </template>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </template>
+            </div>
+          </template>
+          <div class="btn-row">
+            <button class="btn-primary" @click="proceedToSEO()">Generate SEO Details →</button>
+            <button class="btn-secondary" @click="step=2">← Back</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- STEP 4: SEO Meta -->
+    <div x-show="step===4" x-transition>
+      <div class="eyebrow">Step 4</div>
+      <h1 class="section-title">SEO Title &amp; Description</h1>
+      <p class="section-desc">Auto-generated from your cluster and answers. Edit if needed.</p>
+      <template x-if="seoLoading"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Writing SEO details…</div></div></template>
+      <template x-if="!seoLoading">
+        <div>
+          <div style="margin-bottom:14px">
+            <label class="lbl">SEO Title <span style="color:var(--muted)">(50–60 chars)</span></label>
+            <input class="txt-input" type="text" x-model="seoTitle">
+            <div class="char-hint"><span x-text="seoTitle.length"></span> chars <span :class="seoTitle.length>=40&&seoTitle.length<=60?'char-ok':seoTitle.length>60?'char-over':'char-warn'" x-text="seoTitle.length>=40&&seoTitle.length<=60?'— good ✓':seoTitle.length>60?'— too long':seoTitle.length>0?'— too short':''"></span></div>
+          </div>
+          <div style="margin-bottom:14px">
+            <label class="lbl">Meta Description <span style="color:var(--muted)">(130–160 chars)</span></label>
+            <textarea class="txt-input" x-model="seoDescription"></textarea>
+            <div class="char-hint"><span x-text="seoDescription.length"></span> chars <span :class="seoDescription.length>=100&&seoDescription.length<=160?'char-ok':seoDescription.length>160?'char-over':'char-warn'" x-text="seoDescription.length>=100&&seoDescription.length<=160?'— good ✓':seoDescription.length>160?'— too long':seoDescription.length>0?'— too short':''"></span></div>
+          </div>
+          <template x-if="clusters[selectedCluster]">
+            <div class="alert alert-info" style="margin-bottom:14px">Primary keyword: "<span x-text="clusters[selectedCluster]?.primary_keyword"></span>"</div>
+          </template>
+          <div class="btn-row">
+            <button class="btn-primary" @click="buildPromptSummary()" :disabled="!seoTitle.trim()">Review Prompt →</button>
+            <button class="btn-secondary" @click="step=3">← Back</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- STEP 5: Prompt Review -->
+    <div x-show="step===5" x-transition>
+      <div class="eyebrow">Step 5 — Prompt Review</div>
+      <h1 class="section-title">Review the Prompt</h1>
+      <p class="section-desc">This is what Gemini will be told to write. Edit the angle, tone, or extra instructions before generation begins.</p>
+      <template x-if="promptLoading"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text">Building prompt summary…</div></div></template>
+      <template x-if="!promptLoading&&promptSummary">
+        <div>
+          <!-- Topic & Angle -->
+          <div class="prompt-section">
+            <span class="prompt-section-label">Article Direction</span>
+            <div class="prompt-field">
+              <div class="prompt-key">Topic</div>
+              <div class="prompt-val" x-text="promptSummary.topic"></div>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Angle — edit this if you want to change the focus</div>
+              <textarea class="prompt-val editable" x-model="promptEdits.angle" :placeholder="promptSummary.angle" rows="2"></textarea>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Search Intent</div>
+              <div class="prompt-val" x-text="promptSummary.search_intent"></div>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">AI Search Angle</div>
+              <div class="prompt-val" x-text="promptSummary.ai_search_angle"></div>
+            </div>
+          </div>
+
+          <!-- Keywords -->
+          <div class="prompt-section">
+            <span class="prompt-section-label">Keywords</span>
+            <div class="prompt-field">
+              <div class="prompt-key">Primary keyword (max 3-4 uses in article)</div>
+              <div class="prompt-val" x-text="promptSummary.primary_keyword"></div>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Secondary keywords</div>
+              <div>
+                <template x-for="kw in (promptSummary.secondary_keywords||[])" :key="kw">
+                  <span class="kw-pill" x-text="kw"></span>
+                </template>
+              </div>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">People Also Ask (FAQs will answer these)</div>
+              <div>
+                <template x-for="q in (promptSummary.paa_questions||[])" :key="q">
+                  <span class="paa-pill" x-text="q"></span>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Your Answers -->
+          <div class="prompt-section">
+            <span class="prompt-section-label">Your Copilot Answers</span>
+            <template x-for="(val, key) in promptSummary.copilot_answers" :key="key">
+              <div class="prompt-field">
+                <div class="prompt-key" x-text="key"></div>
+                <div class="prompt-val" x-text="val"></div>
+              </div>
+            </template>
+          </div>
+
+          <!-- SEO -->
+          <div class="prompt-section">
+            <span class="prompt-section-label">SEO Details</span>
+            <div class="prompt-field">
+              <div class="prompt-key">SEO Title</div>
+              <div class="prompt-val" x-text="promptSummary.seo_title"></div>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Meta Description</div>
+              <div class="prompt-val" x-text="promptSummary.seo_description"></div>
+            </div>
+          </div>
+
+          <!-- Tone & Extra -->
+          <div class="prompt-section">
+            <span class="prompt-section-label">Tone &amp; Extra Instructions</span>
+            <div class="prompt-field">
+              <div class="prompt-key">Tone note — add anything specific (optional)</div>
+              <input class="prompt-val editable" type="text" x-model="promptEdits.tone" placeholder="e.g. More conversational. Lead with the emotional angle. Less technical.">
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Extra instructions for this article (optional)</div>
+              <textarea class="prompt-val editable" x-model="promptEdits.extra_instructions" placeholder="e.g. Include a section on drone footage costs. Mention that 618 Media has shot weddings at Hunter Valley venues. Avoid mentioning pricing in the intro." rows="3"></textarea>
+            </div>
+            <div class="prompt-field">
+              <div class="prompt-key">Style reference</div>
+              <div class="prompt-val" style="color:var(--muted)" x-text="promptSummary.style_reference"></div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-primary" @click="step=6">Add Image →</button>
+            <button class="btn-secondary" @click="step=4">← Back</button>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- STEP 6: Image -->
+    <div x-show="step===6" x-transition>
+      <div class="eyebrow">Step 6</div>
+      <h1 class="section-title">Article Image</h1>
+      <p class="section-desc">Add a hero image or skip to generate without one.</p>
+      <div class="img-preview">
+        <template x-if="imagePreviewSrc"><img :src="imagePreviewSrc" alt="Preview"></template>
+        <template x-if="!imagePreviewSrc"><span class="img-ph-text">No image selected</span></template>
+      </div>
+      <div class="img-tabs">
+        <button class="img-tab" :class="{active:imgTab==='upload'}" @click="imgTab='upload'">Upload File</button>
+        <button class="img-tab" :class="{active:imgTab==='url'}" @click="imgTab='url'">Image URL</button>
+      </div>
+      <template x-if="imgTab==='upload'">
+        <div>
+          <div class="file-drop" :class="{dragging:imgDragging}" @click="$refs.fileInput.click()" @dragover.prevent="imgDragging=true" @dragleave="imgDragging=false" @drop.prevent="handleFileDrop($event)">
+            <div class="file-drop-text"><strong>Click to browse</strong> or drag &amp; drop<br><span style="font-size:.58rem">JPG, PNG, WEBP — max 5MB</span></div>
+          </div>
+          <input type="file" x-ref="fileInput" accept="image/*" @change="handleFileSelect($event)">
+          <template x-if="imageFileName"><div style="margin-top:7px;font-family:'DM Mono',monospace;font-size:.6rem;color:var(--green)" x-text="'✓ '+imageFileName"></div></template>
+        </div>
+      </template>
+      <template x-if="imgTab==='url'">
+        <div>
+          <label class="lbl">Image URL</label>
+          <input class="txt-input" type="url" x-model="imageUrl" placeholder="https://images.pexels.com/..." @input="imagePreviewSrc=imageUrl;imageBase64=''">
+        </div>
+      </template>
+      <template x-if="imagePreviewSrc"><button class="btn-secondary" style="margin-top:10px" @click="clearImage()">× Remove image</button></template>
+      <div class="btn-row" style="margin-top:18px">
+        <button class="btn-primary" @click="generateArticle()" :disabled="loading" x-text="loading?'Generating Article…':'Generate Article →'"></button>
+        <button class="btn-secondary" @click="step=5" :disabled="loading">← Back</button>
+        <button class="btn-secondary" @click="generateArticle()" :disabled="loading" style="color:var(--muted)">Skip image →</button>
+      </div>
+      <template x-if="loading"><div class="loading-wrap"><div class="spinner"></div><div class="loading-text" x-text="loadingMsg"></div></div></template>
+    </div>
+
+    <!-- STEP 7: Preview & Rating -->
+    <div x-show="step===7" x-transition>
+      <div class="eyebrow">Step 7 — Preview &amp; Rating</div>
+      <h1 class="section-title">Review Your Article</h1>
+      <p class="section-desc">Live preview below. Rate it, give feedback, revise as many times as needed, then download.</p>
+
+      <div class="stats-row" style="margin-bottom:14px">
+        <div class="stat-box"><div class="stat-val" x-text="generatedArticle?.word_count||'—'"></div><div class="stat-lbl">Words</div></div>
+        <div class="stat-box"><div class="stat-val" x-text="(generatedArticle?.keywords_used||[]).length||'—'"></div><div class="stat-lbl">Keywords</div></div>
+        <div class="stat-box"><div class="stat-val" x-text="revisionCount"></div><div class="stat-lbl">Revisions</div></div>
+        <template x-if="articleRating">
+          <div class="stat-box">
+            <div class="stat-val" :class="articleRating>=7?'rating-good':articleRating>=5?'rating-mid':'rating-bad'" x-text="articleRating+'/10'"></div>
+            <div class="stat-lbl">Your Rating</div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Live preview -->
+      <div class="preview-frame-wrap">
+        <div class="preview-toolbar">
+          <span class="preview-title">Live Preview — <span x-text="seoTitle"></span></span>
+          <template x-if="generatedMeta">
+            <a :href="'/api/articles/'+generatedMeta.id+'/download'" class="btn-primary" style="text-decoration:none;display:inline-block;font-size:.7rem;padding:6px 14px">↓ HTML</a>
+          </template>
+        </div>
+        <iframe class="preview-frame" id="previewFrame"></iframe>
+      </div>
+
+      <!-- Rating -->
+      <div class="revise-wrap">
+        <div class="revise-title">Rate This Article</div>
+        <p style="font-family:'DM Mono',monospace;font-size:.62rem;color:var(--muted);margin-bottom:12px">Rate 1–10. Articles rated 7+ are used to improve future generation quality.</p>
+        <div class="rating-wrap">
+          <template x-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n">
+            <button class="rating-btn"
+              :class="articleRating===n?(n>=7?'selected-good':n>=5?'selected-mid':'selected-bad'):''"
+              @click="setRating(n)"
+              x-text="n">
+            </button>
+          </template>
+        </div>
+        <template x-if="articleRating&&articleRating<7">
+          <div style="margin-top:12px">
+            <label class="lbl">What was wrong? (helps improve future articles)</label>
+            <textarea class="txt-input" x-model="ratingFeedback" placeholder="e.g. Too much keyword repetition. Intro too generic. Pro tip wasn't relevant. Pricing was off..." style="min-height:70px"></textarea>
+            <button class="btn-primary" style="margin-top:8px" @click="submitRating()">Submit Feedback</button>
+          </div>
+        </template>
+        <template x-if="articleRating&&articleRating>=7&&!ratingSubmitted">
+          <button class="btn-secondary" style="margin-top:10px" @click="submitRating()">Save Rating →</button>
+        </template>
+        <template x-if="ratingSubmitted">
+          <div class="alert alert-success" style="margin-top:10px">Rating saved. This will improve future articles.</div>
+        </template>
+      </div>
+
+      <!-- Revise -->
+      <div class="revise-wrap">
+        <div class="revise-title">Revise the Article</div>
+        <div class="revise-tabs">
+          <button class="rev-tab" :class="{active:reviseMode==='full'}" @click="reviseMode='full'">Entire Article</button>
+          <button class="rev-tab" :class="{active:reviseMode==='section'}" @click="reviseMode='section'">Specific Section</button>
+        </div>
+        <template x-if="reviseMode==='section'">
+          <div style="margin-bottom:11px">
+            <label class="lbl">Which section?</label>
+            <select class="sel-input" style="background:var(--elevated);border:1px solid var(--border-hi);color:var(--text);padding:9px 13px;outline:none;width:100%" x-model="reviseSection">
+              <option value="">Select a section…</option>
+              <template x-for="s in articleSections" :key="s"><option :value="s" x-text="s"></option></template>
+            </select>
+          </div>
+        </template>
+        <div style="margin-bottom:11px">
+          <label class="lbl">Your feedback</label>
+          <textarea class="txt-input" x-model="reviseFeedback" placeholder="e.g. Make the intro more direct and open with a specific price. Replace the Pro Tip with something about venue access. Add a section on same-day delivery turnaround." style="min-height:80px"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" @click="reviseArticle()" :disabled="!reviseFeedback.trim()||revising" x-text="revising?'Revising…':'Apply Feedback →'"></button>
+          <button class="btn-secondary" @click="startNew()">+ New Article</button>
+          <template x-if="generatedMeta">
+            <a :href="'/api/articles/'+generatedMeta.id+'/summary-download'" class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center">↓ Prompt Summary</a>
+          </template>
+        </div>
+        <template x-if="revising"><div class="loading-wrap" style="padding:26px 0"><div class="spinner"></div><div class="loading-text" x-text="loadingMsg"></div></div></template>
+      </div>
+      <template x-if="error"><div class="alert alert-error" x-text="error"></div></template>
+    </div>
+
+  </main>
+
+  <!-- Progress bar -->
+  <div class="progress-bar" x-show="progressMsg" x-transition style="display:none">
+    <div class="progress-spinner"></div>
+    <div class="progress-text" x-text="progressMsg"></div>
+  </div>
+
+  <script>
+  const DRAFT_ID_KEY = '618_draft_id';
+
+  function seoApp() {
+    return {
+      step: 1,
+      steps: ['Research','Clusters','Copilot','SEO Meta','Review Prompt','Image','Preview'],
+      loading: false, loadingMsg: '', error: null,
+      seoLoading: false, promptLoading: false,
+      revising: false,
+      progressMsg: '', progressPoll: null,
+      sideTab: 'pending',
+      mobileMenuOpen: false,
+      topic: '', allKeywords: [], kwSources: {},
+      clusters: [], selectedCluster: null,
+      duplicateCheck: null, copilotQuestions: [],
+      answers: {},
+      seoTitle: '', seoDescription: '',
+      promptSummary: null,
+      promptEdits: { angle: '', tone: '', extra_instructions: '', sections: [] },
+      imgTab: 'upload', imageUrl: '', imageBase64: '', imageFileName: '', imagePreviewSrc: '',
+      imgDragging: false,
+      generatedArticle: null, generatedMeta: null,
+      revisionCount: 0, reviseMode: 'full', reviseSection: '', reviseFeedback: '',
+      articleSections: [],
+      articleRating: null, ratingFeedback: '', ratingSubmitted: false,
+      articles: [], drafts: [],
+      pending: [], selectedPending: null,
+      pipelineStatus: { running: false, job: null },
+      previewNonce: 0,
+      pendingImgTab: 'url', pendingImageUrl: '', pendingImageBase64: '', pendingImageFileName: '', pendingSettingImage: false,
+      pendingFeedback: '', pendingRevising: false,
+      selectedArticleEdit: null, articleEditLoading: false, articleEditData: null,
+      reels: [], reelsLoading: false, selectedReel: null, reelData: null, reelLoading: false,
+      articleImgTab: 'url', articleImageUrl: '', articleImageBase64: '', articleImageFileName: '', articleSettingImage: false,
+      articleFeedback: '', articleRevising: false,
+      pipelineLastMsg: '',
+      scConnected: {{ 'true' if sc_connected else 'false' }},
+      draftId: null,
+
+      async init() {
+        await this.loadArticles();
+        await this.loadDrafts();
+        await this.loadPending();
+        // Generate or restore draft ID
+        this.draftId = localStorage.getItem(DRAFT_ID_KEY) || this.newDraftId();
+        localStorage.setItem(DRAFT_ID_KEY, this.draftId);
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('sc') === 'connected') { this.scConnected = true; window.history.replaceState({}, '', '/'); }
+        if (params.get('sc') === 'error') { this.error = 'Google Search Console connection failed.'; window.history.replaceState({}, '', '/'); }
+        // Auto-save on step change
+        this.$watch('step', () => this.autoSave());
+      },
+
+      async runPipeline(job) {
+        this.pipelineLastMsg = '';
+        this.pipelineStatus = { running: true, job };
+        try {
+          const r = await fetch('/api/pipeline/run/' + job, { method: 'POST' });
+          const data = await r.json();
+          this.pipelineStatus = { running: false, job: null };
+          if (data.error) { this.pipelineLastMsg = data.error; return; }
+          await this.loadPending();
+          const result = data.result || {};
+          if (job === 'discover') {
+            this.pipelineLastMsg = (result.candidates_found || 0) + ' ideas scored.';
+          } else {
+            this.pipelineLastMsg = result.generated > 0
+              ? result.generated + ' article(s) added to the review queue below.'
+              : (result.note || 'Nothing generated this run.');
+          }
+        } catch {
+          this.pipelineStatus = { running: false, job: null };
+          this.pipelineLastMsg = 'Could not reach the app — check your connection and try again.';
+        }
+      },
+
+      newDraftId() {
+        return 'draft_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+      },
+
+      async autoSave() {
+        if (this.step <= 1 || !this.topic) return;
+        try {
+          const state = {
+            step: this.step, topic: this.topic,
+            clusters: this.clusters, selectedCluster: this.selectedCluster,
+            seoTitle: this.seoTitle, seoDescription: this.seoDescription,
+            answers: this.answers,
+          };
+          await fetch('/api/drafts/save', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ draft_id: this.draftId, state }),
+          });
+          await this.loadDrafts();
+        } catch {}
+      },
+
+      async loadArticles() {
+        try { const r = await fetch('/api/articles'); this.articles = await r.json(); } catch {}
+      },
+
+      async loadDrafts() {
+        try { const r = await fetch('/api/drafts'); this.drafts = await r.json(); } catch {}
+      },
+
+      async loadPending() {
+        try { const r = await fetch('/api/pending'); this.pending = await r.json(); } catch {}
+      },
+
+      viewPending(p) {
+        this.selectedPending = p;
+        this.pendingImgTab = 'url'; this.pendingImageUrl = ''; this.pendingImageBase64 = ''; this.pendingImageFileName = '';
+        this.pendingFeedback = '';
+      },
+
+      handlePendingFileSelect(event) {
+        const file = event.target.files[0]; if (!file) return;
+        this.pendingImageFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => { this.pendingImageBase64 = e.target.result; this.pendingImageUrl = ''; };
+        reader.readAsDataURL(file);
+      },
+
+      async setPendingImage() {
+        if (!this.selectedPending) return;
+        this.pendingSettingImage = true;
+        try {
+          const r = await fetch('/api/pending/' + this.selectedPending.id + '/set-image', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ image_url: this.pendingImageUrl, image_data: this.pendingImageBase64 })
+          });
+          const d = await r.json();
+          if (d.error) { this.pipelineLastMsg = d.error; return; }
+          if (this.selectedPending.article) this.selectedPending.article.fragment = d.fragment;
+          this.previewNonce++;
+        } catch { this.pipelineLastMsg = 'Could not set the image — try again.'; }
+        finally { this.pendingSettingImage = false; }
+      },
+
+      async revisePendingArticle() {
+        if (!this.selectedPending || !this.pendingFeedback.trim()) return;
+        this.pendingRevising = true;
+        try {
+          const r = await fetch('/api/pending/' + this.selectedPending.id + '/revise', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ feedback: this.pendingFeedback })
+          });
+          const d = await r.json();
+          if (d.error) { this.pipelineLastMsg = d.error; return; }
+          this.selectedPending.article = d.article;
+          this.pendingFeedback = '';
+          this.previewNonce++;
+        } catch { this.pipelineLastMsg = 'Could not apply feedback — try again.'; }
+        finally { this.pendingRevising = false; }
+      },
+
+      async loadReels() {
+        this.reelsLoading = true;
+        try {
+          const r = await fetch('/api/reels');
+          this.reels = await r.json();
+        } catch {}
+        finally { this.reelsLoading = false; }
+      },
+
+      async viewReel(r) {
+        this.selectedReel = r;
+        this.reelLoading = true; this.reelData = null;
+        try {
+          const resp = await fetch('/api/articles/' + r.id + '/edit');
+          const d = await resp.json();
+          if (!d.error) this.reelData = d;
+        } catch {}
+        finally { this.reelLoading = false; }
+      },
+
+      async viewArticleEdit(a) {
+        this.selectedArticleEdit = a;
+        this.articleImgTab = 'url'; this.articleImageUrl = ''; this.articleImageBase64 = ''; this.articleImageFileName = '';
+        this.articleFeedback = ''; this.articleEditLoading = true; this.articleEditData = null;
+        try {
+          const r = await fetch('/api/articles/' + a.id + '/edit');
+          const d = await r.json();
+          if (!d.error) this.articleEditData = d;
+        } catch {}
+        finally { this.articleEditLoading = false; }
+      },
+
+      handleArticleFileSelect(event) {
+        const file = event.target.files[0]; if (!file) return;
+        this.articleImageFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => { this.articleImageBase64 = e.target.result; this.articleImageUrl = ''; };
+        reader.readAsDataURL(file);
+      },
+
+      async setArticleImage() {
+        if (!this.selectedArticleEdit) return;
+        this.articleSettingImage = true;
+        try {
+          const r = await fetch('/api/articles/' + this.selectedArticleEdit.id + '/set-image', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ image_url: this.articleImageUrl, image_data: this.articleImageBase64 })
+          });
+          const d = await r.json();
+          if (d.error) { this.error = d.error; return; }
+          this.previewNonce++;
+        } catch { this.error = 'Could not set the image — try again.'; }
+        finally { this.articleSettingImage = false; }
+      },
+
+      async reviseArticleEdit() {
+        if (!this.selectedArticleEdit || !this.articleFeedback.trim() || !this.articleEditData) return;
+        this.articleRevising = true;
+        try {
+          const r = await fetch('/api/article/revise', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+              article_id: this.selectedArticleEdit.id,
+              body: this.articleEditData.body,
+              table_data: this.articleEditData.table,
+              faq_items: this.articleEditData.faq_items,
+              feedback: this.articleFeedback,
+              cluster: this.articleEditData.cluster,
+              seo_title: this.selectedArticleEdit.seo_title,
+              image_url: this.articleEditData.image_url || '',
+            })
+          });
+          const d = await r.json();
+          if (d.error) { this.error = d.error; return; }
+          this.articleEditData.body = d.article.body;
+          this.articleEditData.faq_items = d.article.faq_items;
+          this.selectedArticleEdit.word_count = d.article.word_count || this.selectedArticleEdit.word_count;
+          this.articleFeedback = '';
+          this.previewNonce++;
+          await this.loadArticles();
+        } catch { this.error = 'Could not apply feedback — try again.'; }
+        finally { this.articleRevising = false; }
+      },
+
+      async approvePending(id) {
+        try {
+          await fetch('/api/pending/' + id + '/approve', { method: 'POST' });
+          this.selectedPending = null;
+          await this.loadPending();
+          await this.loadArticles();
+        } catch { this.error = 'Could not approve — try again.'; }
+      },
+
+      async rejectPending(id) {
+        try {
+          await fetch('/api/pending/' + id + '/reject', { method: 'POST' });
+          this.selectedPending = null;
+          await this.loadPending();
+        } catch { this.error = 'Could not reject — try again.'; }
+      },
+
+      copyText(text) {
+        navigator.clipboard.writeText(text || '').catch(() => {});
+      },
+
+      resumeDraft(d) {
+        const s = d.state || {};
+        this.topic = s.topic || d.topic || '';
+        this.step = Math.max(1, Math.min(s.step || 1, 4));
+        this.clusters = s.clusters || [];
+        this.selectedCluster = s.selectedCluster ?? null;
+        this.seoTitle = s.seoTitle || '';
+        this.seoDescription = s.seoDescription || '';
+        this.answers = s.answers || {};
+        this.draftId = d.id;
+        localStorage.setItem(DRAFT_ID_KEY, d.id);
+        this.sideTab = 'articles';
+      },
+
+      async connectSC() {
+        const r = await fetch('/api/sc/auth');
+        const d = await r.json();
+        if (d.error) { this.error = d.error; return; }
+        window.location.href = d.auth_url;
+      },
+      async disconnectSC() { await fetch('/api/sc/disconnect'); this.scConnected = false; },
+
+      startPolling() {
+        this.progressMsg = 'Starting…';
+        this.progressPoll = setInterval(async () => {
+          try { const r = await fetch('/api/progress'); const d = await r.json(); if (d.active && d.status) this.progressMsg = d.status; } catch {}
+        }, 800);
+      },
+      stopPolling() {
+        if (this.progressPoll) { clearInterval(this.progressPoll); this.progressPoll = null; }
+        this.progressMsg = '';
+      },
+
+      async runResearch() {
+        if (!this.topic.trim()) return;
+        this.loading = true; this.error = null; this.startPolling();
+        this.loadingMsg = 'Fetching keywords…';
+        try {
+          const r = await fetch('/api/keywords/research', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({topic:this.topic}) });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          this.allKeywords = d.keywords; this.kwSources = d.sources;
+          this.loadingMsg = 'Clustering into article opportunities…';
+          const r2 = await fetch('/api/keywords/cluster', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({keywords:this.allKeywords,topic:this.topic}) });
+          const d2 = await r2.json();
+          if (d2.error) throw new Error(d2.error);
+          this.clusters = d2.clusters; this.step = 2;
+        } catch(e) { this.error = e.message; }
+        finally { this.loading = false; this.stopPolling(); }
+      },
+
+      async proceedToCopilot() {
+        if (this.selectedCluster === null) return;
+        this.loading = true; this.step = 3; this.startPolling();
+        const cluster = this.clusters[this.selectedCluster];
+        try {
+          const r = await fetch('/api/article/check-duplicate', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({topic:cluster.cluster_name,keywords:[cluster.primary_keyword,...(cluster.secondary_keywords||[])]}) });
+          this.duplicateCheck = await r.json();
+        } catch {}
+        try {
+          const r = await fetch('/api/article/questions', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cluster}) });
+          const d = await r.json();
+          this.copilotQuestions = d.questions || []; this.answers = {};
+        } catch(e) { this.error = e.message; }
+        finally { this.loading = false; this.stopPolling(); }
+      },
+
+      async proceedToSEO() {
+        this.step = 4; this.seoLoading = true; this.startPolling();
+        // Merge answers
+        const merged = {};
+        for (const q of this.copilotQuestions) {
+          const fmt = q.format;
+          if (fmt === 'checkboxes') { const cb = this.answers[q.id+'_cb']; if (cb?.length) merged[q.question] = cb.join(', '); }
+          else if (fmt === 'grid') { const g = this.answers[q.id+'_grid']; if (g) merged[q.question] = Object.entries(g).map(([k,v])=>k+': '+v).join(', '); }
+          else if (this.answers[q.id] === '__other__' && this.answers[q.id+'_text']) merged[q.question] = this.answers[q.id+'_text'];
+          else if (this.answers[q.id]) merged[q.question] = this.answers[q.id];
+        }
+        this.answers = merged;
+        try {
+          const r = await fetch('/api/article/suggest-seo', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cluster:this.clusters[this.selectedCluster],answers:this.answers}) });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          this.seoTitle = d.seo_title || ''; this.seoDescription = d.seo_description || '';
+        } catch(e) { this.error = e.message; }
+        finally { this.seoLoading = false; this.stopPolling(); }
+      },
+
+      async buildPromptSummary() {
+        this.step = 5; this.promptLoading = true; this.startPolling();
+        this.promptEdits = { angle: '', tone: '', extra_instructions: '', sections: [] };
+        try {
+          const r = await fetch('/api/article/prompt-summary', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({cluster:this.clusters[this.selectedCluster],answers:this.answers,seo_title:this.seoTitle,seo_description:this.seoDescription}) });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          this.promptSummary = d.summary;
+        } catch(e) { this.error = e.message; }
+        finally { this.promptLoading = false; this.stopPolling(); }
+      },
+
+      toggleCheck(qId, opt) {
+        const key = qId+'_cb';
+        if (!this.answers[key]) this.answers[key] = [];
+        const idx = this.answers[key].indexOf(opt);
+        if (idx > -1) this.answers[key].splice(idx, 1);
+        else this.answers[key].push(opt);
+      },
+      setGridAnswer(qId, row, col) {
+        const key = qId+'_grid';
+        if (!this.answers[key]) this.answers[key] = {};
+        this.answers[key][row] = col;
+      },
+
+      async handleFileSelect(event) {
+        const file = event.target.files[0]; if (!file) return;
+        this.imageFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => { this.imageBase64 = e.target.result; this.imagePreviewSrc = e.target.result; this.imageUrl = ''; };
+        reader.readAsDataURL(file);
+      },
+      async handleFileDrop(event) {
+        this.imgDragging = false;
+        const file = event.dataTransfer.files[0]; if (!file || !file.type.startsWith('image/')) return;
+        this.imageFileName = file.name;
+        const reader = new FileReader();
+        reader.onload = (e) => { this.imageBase64 = e.target.result; this.imagePreviewSrc = e.target.result; this.imageUrl = ''; };
+        reader.readAsDataURL(file);
+      },
+      clearImage() { this.imageUrl = ''; this.imageBase64 = ''; this.imageFileName = ''; this.imagePreviewSrc = ''; },
+
+      async generateArticle() {
+        this.loading = true; this.error = null; this.startPolling();
+        this.loadingMsg = 'Writing your article… (30–60 seconds)';
+        const sessionData = {
+          topic: this.topic,
+          cluster_name: this.clusters[this.selectedCluster]?.cluster_name || '',
+          primary_keyword: this.clusters[this.selectedCluster]?.primary_keyword || '',
+          copilot_answers: this.answers,
+          prompt_edits: this.promptEdits,
+        };
+        try {
+          const r = await fetch('/api/article/generate', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              cluster: this.clusters[this.selectedCluster],
+              answers: this.answers,
+              seo_title: this.seoTitle,
+              seo_description: this.seoDescription,
+              image_url: this.imgTab==='url' ? this.imageUrl : '',
+              image_data: this.imgTab==='upload' ? this.imageBase64 : '',
+              prompt_edits: this.promptEdits,
+              session_data: sessionData,
+            })
+          });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          this.generatedArticle = d.article; this.generatedMeta = d.meta;
+          this.revisionCount = 0; this.articleRating = null; this.ratingFeedback = ''; this.ratingSubmitted = false;
+          this.step = 7;
+          this.$nextTick(() => { this.updatePreview(d.article.fragment); this.extractSections(d.article.fragment); });
+          await this.loadArticles();
+          // Delete the draft now that it's generated
+          if (this.draftId) { await fetch('/api/drafts/'+this.draftId+'/delete', {method:'POST'}); await this.loadDrafts(); this.draftId = this.newDraftId(); localStorage.setItem(DRAFT_ID_KEY, this.draftId); }
+        } catch(e) { this.error = e.message; }
+        finally { this.loading = false; this.stopPolling(); }
+      },
+
+      updatePreview(fragment) {
+        const frame = document.getElementById('previewFrame'); if (!frame) return;
+        frame.srcdoc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#fff;margin:0;padding:20px 0}</style></head><body>${fragment}</body></html>`;
+      },
+
+      extractSections(fragment) {
+        const matches = [...(fragment||'').matchAll(/<h2[^>]*>(.*?)<\/h2>/gi)];
+        this.articleSections = matches.map(m => m[1].replace(/<[^>]+>/g,'').trim());
+      },
+
+      setRating(n) { this.articleRating = n; this.ratingSubmitted = false; },
+
+      async submitRating() {
+        if (!this.generatedMeta || !this.articleRating) return;
+        await fetch('/api/article/rate', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({article_id:this.generatedMeta.id,rating:this.articleRating,feedback:this.ratingFeedback})
+        });
+        this.ratingSubmitted = true;
+        await this.loadArticles();
+      },
+
+      async reviseArticle() {
+        if (!this.reviseFeedback.trim()) return;
+        this.revising = true; this.error = null; this.startPolling();
+        this.loadingMsg = 'Applying your feedback…';
+        try {
+          const r = await fetch('/api/article/revise', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({
+              body: this.generatedArticle.body,
+              table_data: this.generatedArticle.table,
+              faq_items: this.generatedArticle.faq_items,
+              feedback: this.reviseFeedback,
+              target_section: this.reviseMode==='section' ? this.reviseSection : null,
+              cluster: this.clusters[this.selectedCluster],
+              seo_title: this.seoTitle,
+              image_url: this.imgTab==='url' ? this.imageUrl : '',
+              image_data: this.imgTab==='upload' ? this.imageBase64 : '',
+            })
+          });
+          const d = await r.json();
+          if (d.error) throw new Error(d.error);
+          this.generatedArticle.body = d.article.body;
+          this.generatedArticle.faq_items = d.article.faq_items;
+          this.generatedArticle.fragment = d.article.fragment;
+          this.generatedArticle.word_count = d.article.word_count || this.generatedArticle.word_count;
+          this.revisionCount++;
+          this.reviseFeedback = ''; this.articleRating = null; this.ratingSubmitted = false;
+          this.$nextTick(() => { this.updatePreview(d.article.fragment); this.extractSections(d.article.fragment); });
+        } catch(e) { this.error = e.message; }
+        finally { this.revising = false; this.stopPolling(); }
+      },
+
+      startNew() {
+        this.step=1; this.topic=''; this.allKeywords=[]; this.clusters=[];
+        this.selectedCluster=null; this.duplicateCheck=null;
+        this.copilotQuestions=[]; this.answers={};
+        this.seoTitle=''; this.seoDescription='';
+        this.promptSummary=null; this.promptEdits={angle:'',tone:'',extra_instructions:'',sections:[]};
+        this.imageUrl=''; this.imageBase64=''; this.imageFileName=''; this.imagePreviewSrc='';
+        this.generatedArticle=null; this.generatedMeta=null;
+        this.revisionCount=0; this.reviseFeedback=''; this.reviseSection='';
+        this.articleRating=null; this.ratingFeedback=''; this.ratingSubmitted=false;
+        this.error=null;
+        this.draftId = this.newDraftId();
+        localStorage.setItem(DRAFT_ID_KEY, this.draftId);
+      },
+    };
+  }
+  </script>
+</body>
+</html>

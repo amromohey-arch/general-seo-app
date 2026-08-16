@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>618 Media — SEO Article Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:#080808;--surface:#101010;--elevated:#161616;
+      --border:#1e1e1e;--border-hi:#2a2a2a;
+      --text:#e2e2dc;--muted:#6a6a62;
+      --amber:#e8a020;--amber-dim:#9a6b10;
+      --red:#ef4444;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{font-size:15px}
+    body{background:var(--bg);color:var(--text);font-family:'Source Serif 4',Georgia,serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+    .box{width:100%;max-width:340px;padding:36px 32px;background:var(--surface);border:1px solid var(--border-hi)}
+    .brand{font-family:'DM Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.18em;color:var(--amber);margin-bottom:6px}
+    h1{font-family:'Syne',sans-serif;font-weight:700;font-size:1.3rem;margin-bottom:22px}
+    label{display:block;font-family:'DM Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+    input{width:100%;background:var(--elevated);border:1px solid var(--border);color:var(--text);font-family:'Source Serif 4',serif;font-size:.9rem;padding:10px 12px;margin-bottom:16px}
+    input:focus{outline:none;border-color:var(--amber-dim)}
+    button{width:100%;background:var(--amber);border:none;color:#1a0f00;font-family:'DM Mono',monospace;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;padding:12px;cursor:pointer}
+    button:hover{background:var(--amber-dim)}
+    .err{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--red);margin-bottom:16px}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="brand">618 Media</div>
+    <h1>SEO Article Tool</h1>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <form method="POST">
+      <label>Email</label>
+      <input type="email" name="email" required autofocus>
+      <label>Password</label>
+      <input type="password" name="password" required>
+      <button type="submit">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>
