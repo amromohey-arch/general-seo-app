@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+
+  "tenant": {
+    "id": "618-media",
+    "business_name": "618 Media",
+    "preset": "creative_portfolio"
+  },
+
+  "brand": {
+    "about": "618 Media is a video production company based in NSW, working with businesses, artists, and organisations across Sydney and NSW on music videos, brand stories, corporate video, event coverage, real estate, social media content, and more. Every project starts with a conversation about what you want to achieve. We handle everything from concept through to final delivery.",
+    "services": [
+      "music videos",
+      "corporate video",
+      "event coverage",
+      "real estate video",
+      "social media content",
+      "brand storytelling",
+      "promos",
+      "health and fitness video"
+    ],
+    "location": {
+      "city": "Sydney",
+      "region": "NSW",
+      "mention_rule": "Only mention Sydney or NSW when it genuinely adds value to the sentence. Never force location mentions into body copy. The About section handles location — the article body handles expertise. If the topic is location-specific (e.g. conference video costs in Sydney) then mention it naturally. If the topic is general (e.g. how to prepare for a shoot) do not force location in."
+    },
+    "contact": {
+      "website": "https://www.618media.com.au",
+      "contact_page_url": "https://www.618media.com.au/contact-us",
+      "calculator_url": "https://www.618media.com.au/my-video-calculator",
+      "fallback_email": "info@618media.com.au",
+      "lead_form": {
+        "provider": "web3forms",
+        "access_key_env": "WEB3FORMS_ACCESS_KEY",
+        "subject_prefix": "Enquiry:",
+        "from_name": "618 Media Blog",
+        "response_note": "A team member reviews every message personally. No automated replies."
+      }
+    },
+    "landmines": [
+      "NEVER mention any individual's name or staff member anywhere in the article",
+      "NEVER mention Central Coast, Narara, Erina, or Gosford in client-facing copy"
+    ]
+  },
+
+  "content_rules": {
+    "banned_words": [
+      "boutique", "agile", "cost-effective", "high-end production house",
+      "passionate", "dedicated team", "take your brand to the next level",
+      "look no further", "game-changing", "seamless", "stunning visuals",
+      "captivating content", "in the world of", "leverage", "robust", "delve"
+    ],
+    "first_person_allowed": false,
+    "no_fake_testimonials": true,
+    "keyword_stuffing_forbidden": true,
+    "primary_keyword_max_uses": 3,
+    "faq_answers_must_be_written": true,
+    "article_perspective": "Expert advice TO potential clients — never written as if the reader is doing the task themselves",
+    "word_count_target": "900-1200 words",
+    "style_reference_path": "style_reference.txt",
+    "writing_rules": [
+      { "id": "headings_earn_place", "title": "HEADINGS MUST EARN THEIR PLACE",
+        "body": "Every H2 must ask a question, make a specific promise, or state a useful fact. Never use a keyword phrase as a heading.\nBad: Brand Video Strategy Sydney. Good: Why Most Brand Videos Fail Before the Camera Rolls." },
+      { "id": "no_keyword_restructuring", "title": "NEVER RESTRUCTURE SENTENCES FOR KEYWORDS",
+        "body": "Keywords must fit naturally into sentences a real person would write. If a keyword phrase does not fit naturally, use a semantic variant. Never invert or restructure a sentence to accommodate a keyword.\nBad: A professional video strategy NSW businesses implement ensures. Good: Most businesses that invest in video skip the strategy phase entirely — and it shows." },
+      { "id": "claims_need_reasons", "title": "EVERY CLAIM NEEDS A REASON",
+        "body": "Never make a claim without immediately explaining why it is true or giving a specific example.\nBad: Video builds trust. Good: Video builds trust because a viewer can hear tone of voice and read body language — things a written testimonial cannot replicate." },
+      { "id": "one_clear_reader", "title": "ONE CLEAR READER IN MIND",
+        "body": "Write as if speaking directly to one specific type of person — a small business owner, a musician, a gym owner. Use you specifically and personally." },
+      { "id": "concrete_over_abstract", "title": "CONCRETE SPECIFICS OVER ABSTRACT GENERALITIES",
+        "body": "Replace every abstract claim with a concrete specific.\nBad: Maximise your investment. Good: Get three months of social content from one shoot day.\nBad: Align with brand goals. Good: Make sure the video actually says what your business does." },
+      { "id": "vary_sentence_length", "title": "VARY SENTENCE LENGTH DELIBERATELY",
+        "body": "Short sentences land hard. Longer sentences build context and carry the reader forward before they have time to stop. Never write three consecutive sentences of the same length." },
+      { "id": "intro_hooks_with_problem", "title": "THE INTRO MUST HOOK WITH A PROBLEM",
+        "body": "The opening paragraph must name a specific problem the reader has, or open with a counter-intuitive claim. Never open with a general statement about the industry.\nBad: Professional video production is an important tool for businesses in 2026.\nGood: Most businesses spend their entire video budget on the shoot day — the one part that matters least." },
+      { "id": "earned_transitions", "title": "TRANSITIONS BETWEEN SECTIONS MUST BE EARNED",
+        "body": "Each section must end with a sentence that sets up the next section or leaves the reader with something concrete. Never just stop." },
+      { "id": "no_meta_language", "title": "NO META-LANGUAGE",
+        "body": "Never use sentences that describe what the article is doing rather than actually doing it.\nBad: This involves understanding the journey a viewer takes. Good: Explain the journey directly." },
+      { "id": "end_section_strong", "title": "END EVERY SECTION ON YOUR STRONGEST SENTENCE",
+        "body": "The last sentence of every H2 section must be the most specific and useful sentence in that section. Never end on a general observation." },
+      { "id": "moment_of_doubt", "title": "WRITE FOR THE MOMENT OF DOUBT",
+        "body": "Readers are not yet convinced they need video. Address the specific hesitation they feel — cost, complexity, whether it will work for their business. Do not assume they are already sold." },
+      { "id": "use_you_not_businesses", "title": "USE YOU MORE THAN BUSINESSES OR COMPANIES",
+        "body": "Businesses often struggle with video ROI creates distance. If you have ever paid for a video and wondered where the views went puts the reader in the article. Write to a person, not a category." },
+      { "id": "price_timeline_specificity", "title": "PRICE AND TIMELINE SPECIFICITY CLOSES DEALS",
+        "body": "Include honest specific numbers wherever relevant. A brand video typically takes 3 to 4 weeks from brief to delivery is more useful and trustworthy than professional video production requires careful timeline management." },
+      { "id": "acknowledge_alternative", "title": "ACKNOWLEDGE THE READER'S ALTERNATIVE",
+        "body": "The reader is always considering doing nothing, filming it themselves, or hiring someone cheaper. Acknowledge this honestly. You can shoot this yourself — here is when that works and when it does not builds more trust than pretending cheaper options do not exist." },
+      { "id": "clear_next_step", "title": "END WITH A CLEAR NEXT STEP",
+        "body": "The last paragraph before the FAQ and CTA should tell the reader exactly what to do next and why now is the right time. A logical conclusion to the argument, not a sales pitch." },
+      { "id": "unexpected_insight", "title": "ONE UNEXPECTED INSIGHT PER ARTICLE",
+        "body": "Include one thing the reader did not know before and will not find in a competitor article. Something specific, non-obvious, and immediately useful. This appears naturally in the body, separate from the Pro Tip." },
+      { "id": "active_voice", "title": "ACTIVE VOICE ALMOST ALWAYS",
+        "body": "Rewrite every passive sentence as active.\nBad: The footage is then reviewed by the production team. Good: The production team reviews the footage." },
+      { "id": "define_industry_terms", "title": "DEFINE EVERY INDUSTRY TERM IMMEDIATELY",
+        "body": "If you use a technical term — pre-production, deliverables, colour grading, aspect ratio — explain it in plain language in the same sentence. Never assume the reader knows industry vocabulary." },
+      { "id": "point_of_view", "title": "THE ARTICLE MUST HAVE A POINT OF VIEW",
+        "body": "State an argument, not just facts. Here is why most corporate videos waste money is an argument. Here is information about corporate video is not. A point of view makes the article worth reading and sharing." },
+      { "id": "no_repeated_sentence_openers", "title": "NEVER START TWO CONSECUTIVE SENTENCES WITH THE SAME WORD",
+        "body": "Especially the word This. This involves, This requires, This ensures back to back is lazy generation. Vary the opening word of every sentence." }
+    ]
+  },
+
+  "style": {
+    "google_fonts_url": "https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap",
+    "fonts": {
+      "heading": "'DM Serif Display',Georgia,serif",
+      "body": "'DM Sans',system-ui,sans-serif"
+    },
+    "colors": {
+      "accent": "#E5421A",
+      "accent_hover": "#C93A14",
+      "text": "#1A1A1A",
+      "text_muted": "#555",
+      "background": "#FFFFFF",
+      "surface_alt": "#F4F3F0",
+      "border": "#E0DDD8",
+      "accent_tint_bg": "#FDF3F0",
+      "dark_bg": "#1A1A1A"
+    }
+  },
+
+  "social_video": {
+    "enabled": true,
+    "approved_hooks": [
+      "Nobody mentions this.",
+      "I wish I knew this earlier.",
+      "Pause for a second.",
+      "Ever noticed this pattern?",
+      "Here's the real truth.",
+      "Let me save you hours.",
+      "This may surprise you.",
+      "You need this now.",
+      "You may not agree with this.",
+      "I just figured this out."
+    ],
+    "caption_tagline": "618 Media, video production across Sydney & NSW.",
+    "hashtags": {
+      "location": ["#videoproductionsydney", "#sydneyvideographer", "#nswbusiness"],
+      "audience": ["#smallbusinessaustralia", "#videomarketing"],
+      "brand": ["#618media"]
+    }
+  },
+
+  "funnel": {
+    "enabled": true,
+    "stages": [
+      { "id": "TOFU", "name": "Top of Funnel",
+        "job": "Get a stranger to stop scrolling. No pitch, no CTA push. Raw talking head, reaction/hot-take, or reacting to something already popular then redirecting to what's realistic for our ICP. Builds pure awareness, nothing sold." },
+      { "id": "MOFU", "name": "Middle of Funnel",
+        "job": "Show how we actually work. Mechanism breakdown or process walkthrough — a real piece of the process shown, not just the finished result. Sells the thinking, not the gear. Builds trust through transparency." },
+      { "id": "BOFU", "name": "Bottom of Funnel",
+        "job": "Prove it worked, get the message. Requires REAL proof — an actual client testimonial in their own words, or real results/analytics shown on screen. Never fabricate this. If the content has no genuine client proof behind it, it is not BOFU, even if it's persuasive — default to TOFU or MOFU instead." }
+    ]
+  },
+
+  "seed_topics": {
+    "strategy": "fixed_list",
+    "topics": [
+      "music video production sydney",
+      "music video cost",
+      "how to plan a music video",
+      "music video director",
+      "narrative music video",
+      "music video for independent artists"
+    ]
+  }
+}
