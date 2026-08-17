@@ -7,172 +7,239 @@ from modules.gemini_client import gemini
 
 WEB3FORMS_KEY = os.environ.get('WEB3FORMS_ACCESS_KEY', 'YOUR_WEB3FORMS_KEY')
 
-_STYLE_REF_PATH = os.path.join(os.path.dirname(__file__), 'style_reference.txt')
-STYLE_REFERENCE = ''
-if os.path.exists(_STYLE_REF_PATH):
-    with open(_STYLE_REF_PATH, 'r', encoding='utf-8') as f:
-        STYLE_REFERENCE = f.read().strip()
+# ─── Tenant config ──────────────────────────────────────────────────────────
+# BRAND_CONTEXT, FULL_CSS, and STYLE_REFERENCE below are computed from this
+# config instead of hardcoded per-business values. See config/618-media.json
+# for 618's data and memory/hardcoded-to-extract.md in the repo root for why.
+_MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_CONFIG_PATH = os.path.normpath(os.path.join(_MODULES_DIR, '..', 'config', '618-media.json'))
 
-BRAND_CONTEXT = """
-ABOUT 618 MEDIA:
-618 Media is a video production company based in NSW, working with businesses, artists, and organisations across Sydney and NSW on music videos, brand stories, corporate video, event coverage, real estate, social media content, and more. Every project starts with a conversation about what you want to achieve. We handle everything from concept through to final delivery.
+_config_path_env = os.environ.get('CONFIG_PATH', '').strip()
+if _config_path_env:
+    # Relative overrides resolve against generator.py's own directory, the
+    # same basis the default uses -- not the process's working directory,
+    # which varies by how/where the app is launched (Cloud Run, local dev,
+    # etc). Every future tenant's deployment will set this env var, so it's
+    # about to become the primary path, not just the fallback.
+    CONFIG_PATH = (
+        _config_path_env if os.path.isabs(_config_path_env)
+        else os.path.normpath(os.path.join(_MODULES_DIR, _config_path_env))
+    )
+else:
+    CONFIG_PATH = _DEFAULT_CONFIG_PATH
 
-STRICT BRAND RULES — NEVER BREAK THESE:
-- NEVER mention any individual's name or staff member anywhere in the article
-- NEVER use: boutique, agile, cost-effective, high-end production house, passionate, dedicated team, take your brand to the next level, look no further, game-changing, seamless, stunning visuals, captivating content, in the world of, leverage, robust, delve
-- NEVER use first person I — write as expert industry advice
-- Services: music videos, corporate video, event coverage, real estate video, social media content, brand storytelling, promos, health and fitness video
-- LOCATION RULE: Only mention Sydney or NSW when it genuinely adds value to the sentence. Never force location mentions into body copy. The About section handles location — the article body handles expertise. If the topic is location-specific (e.g. conference video costs in Sydney) then mention it naturally. If the topic is general (e.g. how to prepare for a shoot) do not force location in.
-- No made-up client quotes or fake testimonials
-- THE CURRENT YEAR IS 2026. Never write 2024 or 2025 anywhere
-- KEYWORD STUFFING IS FORBIDDEN. Primary keyword max 3 uses total. Use semantic variants everywhere else
-- FAQ answers MUST be fully written — never a question without an answer
-- ARTICLE PERSPECTIVE: Expert advice TO potential clients — never written as if the reader is doing the task themselves
+# Every dotted path here is actually read via bracket access somewhere in
+# _build_brand_context / _build_full_css -- verified field-by-field by
+# removing each one from a real config and confirming it currently produces
+# an uncaught KeyError, not a clean error. Deliberately NOT required because
+# nothing reads them: brand.contact (incl. lead_form), content_rules.
+# word_count_target, content_rules.style_reference_path,
+# style.colors.background, tenant.id, tenant.preset.
+_REQUIRED_CONFIG_PATHS = [
+    'tenant.business_name',
+    'brand.about',
+    'brand.services',
+    'brand.landmines',
+    'brand.location.mention_rule',
+    'content_rules.banned_words',
+    'content_rules.article_perspective',
+    'content_rules.first_person_allowed',
+    'content_rules.no_fake_testimonials',
+    'content_rules.keyword_stuffing_forbidden',
+    'content_rules.primary_keyword_max_uses',
+    'content_rules.faq_answers_must_be_written',
+    'content_rules.writing_rules',
+    'style.google_fonts_url',
+    'style.fonts.body',
+    'style.fonts.heading',
+    'style.colors.accent',
+    'style.colors.accent_hover',
+    'style.colors.text',
+    'style.colors.text_muted',
+    'style.colors.border',
+    'style.colors.accent_tint_bg',
+    'style.colors.surface_alt',
+]
 
-20 WRITING RULES — APPLY TO EVERY ARTICLE:
 
-RULE 1 — HEADINGS MUST EARN THEIR PLACE:
-Every H2 must ask a question, make a specific promise, or state a useful fact. Never use a keyword phrase as a heading.
-Bad: Brand Video Strategy Sydney. Good: Why Most Brand Videos Fail Before the Camera Rolls.
+def _load_tenant_config(path: str) -> dict:
+    """Loads and validates the tenant config. The app must not start with a
+    broken or missing config, so this still fails loudly -- but with a
+    message naming the exact problem instead of a raw traceback."""
+    if not os.path.exists(path):
+        raise RuntimeError(
+            f"Tenant config not found at '{path}'. Set the CONFIG_PATH env var "
+            f"to a valid config file, or check that the default config exists."
+        )
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Tenant config at '{path}' is not valid JSON: {e}") from e
 
-RULE 2 — NEVER RESTRUCTURE SENTENCES FOR KEYWORDS:
-Keywords must fit naturally into sentences a real person would write. If a keyword phrase does not fit naturally, use a semantic variant. Never invert or restructure a sentence to accommodate a keyword.
-Bad: A professional video strategy NSW businesses implement ensures. Good: Most businesses that invest in video skip the strategy phase entirely — and it shows.
+    for dotted_path in _REQUIRED_CONFIG_PATHS:
+        node = cfg
+        for part in dotted_path.split('.'):
+            if not isinstance(node, dict) or part not in node:
+                raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
+            node = node[part]
 
-RULE 3 — EVERY CLAIM NEEDS A REASON:
-Never make a claim without immediately explaining why it is true or giving a specific example.
-Bad: Video builds trust. Good: Video builds trust because a viewer can hear tone of voice and read body language — things a written testimonial cannot replicate.
+    for i, rule in enumerate(cfg['content_rules']['writing_rules']):
+        for key in ('title', 'body'):
+            if key not in rule:
+                raise RuntimeError(
+                    f"Tenant config at '{path}' is missing '{key}' on content_rules.writing_rules[{i}]."
+                )
 
-RULE 4 — ONE CLEAR READER IN MIND:
-Write as if speaking directly to one specific type of person — a small business owner, a musician, a gym owner. Use you specifically and personally.
+    return cfg
 
-RULE 5 — CONCRETE SPECIFICS OVER ABSTRACT GENERALITIES:
-Replace every abstract claim with a concrete specific.
-Bad: Maximise your investment. Good: Get three months of social content from one shoot day.
-Bad: Align with brand goals. Good: Make sure the video actually says what your business does.
 
-RULE 6 — VARY SENTENCE LENGTH DELIBERATELY:
-Short sentences land hard. Longer sentences build context and carry the reader forward before they have time to stop. Never write three consecutive sentences of the same length.
+TENANT_CONFIG = _load_tenant_config(CONFIG_PATH)
 
-RULE 7 — THE INTRO MUST HOOK WITH A PROBLEM:
-The opening paragraph must name a specific problem the reader has, or open with a counter-intuitive claim. Never open with a general statement about the industry.
-Bad: Professional video production is an important tool for businesses in 2026.
-Good: Most businesses spend their entire video budget on the shoot day — the one part that matters least.
 
-RULE 8 — TRANSITIONS BETWEEN SECTIONS MUST BE EARNED:
-Each section must end with a sentence that sets up the next section or leaves the reader with something concrete. Never just stop.
+def _load_style_reference(cfg: dict, config_path: str) -> str:
+    """Optional style-matching reference article, sourced from config's
+    content_rules.style_reference_path -- resolved relative to the config
+    file's own directory (not generator.py's), so a tenant's config and its
+    style reference travel together. Missing/unset is fine: this feature is
+    opt-in, see generate_article_html's use of STYLE_REFERENCE."""
+    rel_path = cfg.get('content_rules', {}).get('style_reference_path')
+    if not rel_path:
+        return ''
+    config_dir = os.path.dirname(os.path.abspath(config_path))
+    style_path = os.path.normpath(os.path.join(config_dir, rel_path))
+    if not os.path.exists(style_path):
+        return ''
+    with open(style_path, 'r', encoding='utf-8') as f:
+        return f.read().strip()
 
-RULE 9 — NO META-LANGUAGE:
-Never use sentences that describe what the article is doing rather than actually doing it.
-Bad: This involves understanding the journey a viewer takes. Good: Explain the journey directly.
 
-RULE 10 — END EVERY SECTION ON YOUR STRONGEST SENTENCE:
-The last sentence of every H2 section must be the most specific and useful sentence in that section. Never end on a general observation.
+STYLE_REFERENCE = _load_style_reference(TENANT_CONFIG, CONFIG_PATH)
 
-RULE 11 — WRITE FOR THE MOMENT OF DOUBT:
-Readers are not yet convinced they need video. Address the specific hesitation they feel — cost, complexity, whether it will work for their business. Do not assume they are already sold.
 
-RULE 12 — USE YOU MORE THAN BUSINESSES OR COMPANIES:
-Businesses often struggle with video ROI creates distance. If you have ever paid for a video and wondered where the views went puts the reader in the article. Write to a person, not a category.
+def _build_brand_context(cfg: dict) -> str:
+    """Rebuilds the brand/rules prompt block from tenant config. Bullet order
+    and writing-rule formatting match the original hardcoded BRAND_CONTEXT
+    layout exactly (verified byte-for-byte before this refactor landed)."""
+    brand = cfg['brand']
+    rules_cfg = cfg['content_rules']
+    year = datetime.now().year
 
-RULE 13 — PRICE AND TIMELINE SPECIFICITY CLOSES DEALS:
-Include honest specific numbers wherever relevant. A brand video typically takes 3 to 4 weeks from brief to delivery is more useful and trustworthy than professional video production requires careful timeline management.
+    bullets = list(brand['landmines'])
+    bullets.append('NEVER use: ' + ', '.join(rules_cfg['banned_words']))
+    if not rules_cfg['first_person_allowed']:
+        bullets.append('NEVER use first person I — write as expert industry advice')
+    bullets.append('Services: ' + ', '.join(brand['services']))
+    bullets.append('LOCATION RULE: ' + brand['location']['mention_rule'])
+    if rules_cfg['no_fake_testimonials']:
+        bullets.append('No made-up client quotes or fake testimonials')
+    bullets.append(f'THE CURRENT YEAR IS {year}. Never write {year - 2} or {year - 1} anywhere')
+    if rules_cfg['keyword_stuffing_forbidden']:
+        bullets.append(
+            f"KEYWORD STUFFING IS FORBIDDEN. Primary keyword max {rules_cfg['primary_keyword_max_uses']} "
+            f"uses total. Use semantic variants everywhere else"
+        )
+    if rules_cfg['faq_answers_must_be_written']:
+        bullets.append('FAQ answers MUST be fully written — never a question without an answer')
+    bullets.append('ARTICLE PERSPECTIVE: ' + rules_cfg['article_perspective'])
 
-RULE 14 — ACKNOWLEDGE THE READER'S ALTERNATIVE:
-The reader is always considering doing nothing, filming it themselves, or hiring someone cheaper. Acknowledge this honestly. You can shoot this yourself — here is when that works and when it does not builds more trust than pretending cheaper options do not exist.
+    bullets_text = '\n'.join(f'- {b}' for b in bullets)
 
-RULE 15 — END WITH A CLEAR NEXT STEP:
-The last paragraph before the FAQ and CTA should tell the reader exactly what to do next and why now is the right time. A logical conclusion to the argument, not a sales pitch.
+    writing_rules = rules_cfg['writing_rules']
+    rules_text = '\n\n'.join(
+        f"RULE {i + 1} — {r['title']}:\n{r['body']}" for i, r in enumerate(writing_rules)
+    )
 
-RULE 16 — ONE UNEXPECTED INSIGHT PER ARTICLE:
-Include one thing the reader did not know before and will not find in a competitor article. Something specific, non-obvious, and immediately useful. This appears naturally in the body, separate from the Pro Tip.
+    return (
+        f"ABOUT {cfg['tenant']['business_name'].upper()}:\n"
+        f"{brand['about']}\n\n"
+        f"STRICT BRAND RULES — NEVER BREAK THESE:\n"
+        f"{bullets_text}\n\n"
+        f"{len(writing_rules)} WRITING RULES — APPLY TO EVERY ARTICLE:\n\n"
+        f"{rules_text}"
+    ).strip()
 
-RULE 17 — ACTIVE VOICE ALMOST ALWAYS:
-Rewrite every passive sentence as active.
-Bad: The footage is then reviewed by the production team. Good: The production team reviews the footage.
 
-RULE 18 — DEFINE EVERY INDUSTRY TERM IMMEDIATELY:
-If you use a technical term — pre-production, deliverables, colour grading, aspect ratio — explain it in plain language in the same sentence. Never assume the reader knows industry vocabulary.
-
-RULE 19 — THE ARTICLE MUST HAVE A POINT OF VIEW:
-State an argument, not just facts. Here is why most corporate videos waste money is an argument. Here is information about corporate video is not. A point of view makes the article worth reading and sharing.
-
-RULE 20 — NEVER START TWO CONSECUTIVE SENTENCES WITH THE SAME WORD:
-Especially the word This. This involves, This requires, This ensures back to back is lazy generation. Vary the opening word of every sentence.
-""".strip()
-
-FULL_CSS = """@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
+# Shared CSS structure (layout, class names, the FAQ accordion, form styling)
+# stays fixed here — it isn't business-specific. Only the @@TOKEN@@ spots are
+# brand identity (colors/fonts) and get substituted from tenant config.
+# Deliberately NOT tokenized: #E8E5E0 (image placeholder gray), #fff/#ffffff
+# (used for contrast in several unrelated structural spots, not one
+# consistent "background" concept), rgba(...) tints derived from accent/white,
+# error-state colors (#f5c6bc/#fff0ee/#c0392b), and the box-shadow. Those are
+# UI-state/structural colors, not brand identity, so they stay fixed literals.
+_CSS_TEMPLATE = """@import url('@@GOOGLE_FONTS_URL@@');
 .aw *,.aw *::before,.aw *::after{box-sizing:border-box}
-.aw{font-family:'DM Sans',system-ui,sans-serif;color:#1A1A1A;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.75;width:100%;max-width:740px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
-.aw .aey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#E5421A;display:block;margin-bottom:.65rem}
-.aw .at{font-family:'DM Serif Display',Georgia,serif;font-size:clamp(1.75rem,5vw,2.6rem);line-height:1.15;color:#1A1A1A;margin-bottom:.65rem}
-.aw .am{font-size:13px;color:#555;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:2px solid #E0DDD8}
+.aw{font-family:@@FONT_BODY@@;color:@@TEXT@@;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.75;width:100%;max-width:740px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
+.aw .aey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:@@ACCENT@@;display:block;margin-bottom:.65rem}
+.aw .at{font-family:@@FONT_HEADING@@;font-size:clamp(1.75rem,5vw,2.6rem);line-height:1.15;color:@@TEXT@@;margin-bottom:.65rem}
+.aw .am{font-size:13px;color:@@TEXT_MUTED@@;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:2px solid @@BORDER@@}
 .aw .am span{margin-right:1rem}
 .aw .aimg{width:100%;aspect-ratio:16/9;background:#E8E5E0;border-radius:10px;margin:1.75rem 0;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .aw .aimg img{width:100%;height:100%;object-fit:cover;border-radius:10px}
-.aw .ab h2{font-family:'DM Serif Display',Georgia,serif;font-size:clamp(1.2rem,3.5vw,1.65rem);color:#1A1A1A;margin:2.25rem 0 .65rem;line-height:1.25}
-.aw .ab h3{font-size:1.05rem;font-weight:700;color:#1A1A1A;margin:1.5rem 0 .5rem}
-.aw .ab p{margin-bottom:1.15rem;color:#1A1A1A}
+.aw .ab h2{font-family:@@FONT_HEADING@@;font-size:clamp(1.2rem,3.5vw,1.65rem);color:@@TEXT@@;margin:2.25rem 0 .65rem;line-height:1.25}
+.aw .ab h3{font-size:1.05rem;font-weight:700;color:@@TEXT@@;margin:1.5rem 0 .5rem}
+.aw .ab p{margin-bottom:1.15rem;color:@@TEXT@@}
 .aw .ab ul,.aw .ab ol{margin:.75rem 0 1.15rem 1.5rem}
-.aw .ab li{margin-bottom:.5rem;color:#1A1A1A}
+.aw .ab li{margin-bottom:.5rem;color:@@TEXT@@}
 .aw .ab strong{font-weight:700}
-.aw .ab a{color:#E5421A !important;text-decoration:none !important;border-bottom:1px solid rgba(229,66,26,.3);transition:border-color .15s}
-.aw .ab a:hover{border-color:#E5421A !important}
-.aw .apq{border-left:3px solid #E5421A;padding:.9rem 1.25rem;margin:1.75rem 0;background:#FDF3F0;border-radius:0 8px 8px 0;font-family:'DM Serif Display',Georgia,serif;font-size:1.05rem;color:#1A1A1A;font-style:italic;line-height:1.6}
-.aw .atip{background:#1A1A1A;border-radius:10px;padding:1.25rem 1.5rem;margin:1.75rem 0}
-.aw .atip-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#E5421A;display:block;margin-bottom:.45rem}
+.aw .ab a{color:@@ACCENT@@ !important;text-decoration:none !important;border-bottom:1px solid rgba(229,66,26,.3);transition:border-color .15s}
+.aw .ab a:hover{border-color:@@ACCENT@@ !important}
+.aw .apq{border-left:3px solid @@ACCENT@@;padding:.9rem 1.25rem;margin:1.75rem 0;background:@@ACCENT_TINT_BG@@;border-radius:0 8px 8px 0;font-family:@@FONT_HEADING@@;font-size:1.05rem;color:@@TEXT@@;font-style:italic;line-height:1.6}
+.aw .atip{background:@@TEXT@@;border-radius:10px;padding:1.25rem 1.5rem;margin:1.75rem 0}
+.aw .atip-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:@@ACCENT@@;display:block;margin-bottom:.45rem}
 .aw .atip p{color:rgba(255,255,255,.8);font-size:14px;line-height:1.7;margin:0}
 .aw .atbw{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;margin:1.5rem 0;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .aw .atb{width:100%;border-collapse:collapse;font-size:14px;min-width:360px}
-.aw .atb thead tr{background:#1A1A1A;color:#fff}
+.aw .atb thead tr{background:@@TEXT@@;color:#fff}
 .aw .atb thead th{padding:11px 13px;text-align:left;font-weight:600;letter-spacing:.02em}
 .aw .atb tbody tr:nth-child(odd){background:#fff}
-.aw .atb tbody tr:nth-child(even){background:#F4F3F0}
+.aw .atb tbody tr:nth-child(even){background:@@SURFACE_ALT@@}
 .aw .atb tbody tr:hover{background:#EEE8E0;transition:background .15s}
-.aw .atb tbody td{padding:10px 13px;border-bottom:1px solid #E0DDD8;color:#1A1A1A;line-height:1.5;vertical-align:top}
+.aw .atb tbody td{padding:10px 13px;border-bottom:1px solid @@BORDER@@;color:@@TEXT@@;line-height:1.5;vertical-align:top}
 .aw .atb tbody td:first-child{font-weight:600}
 .aw .afaq{margin:2.25rem 0}
-.aw .afaq-t{font-family:'DM Serif Display',Georgia,serif;font-size:1.45rem;color:#1A1A1A;margin-bottom:.9rem}
-.aw .afaq-item{border-bottom:1px solid #E0DDD8}
+.aw .afaq-t{font-family:@@FONT_HEADING@@;font-size:1.45rem;color:@@TEXT@@;margin-bottom:.9rem}
+.aw .afaq-item{border-bottom:1px solid @@BORDER@@}
 .aw .afaq-btn{width:100%;background:none;border:none;padding:.9rem 0;display:flex;align-items:center;justify-content:space-between;gap:.9rem;cursor:pointer;text-align:left}
-.aw .afaq-q{font-size:15px;font-weight:600;color:#1A1A1A;line-height:1.4}
-.aw .afaq-ic{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1.5px solid #E0DDD8;position:relative;transition:background .16s,border-color .16s}
-.aw .afaq-ic::before,.aw .afaq-ic::after{content:'';position:absolute;top:50%;left:50%;background:#555;border-radius:2px;transition:opacity .2s,transform .2s}
+.aw .afaq-q{font-size:15px;font-weight:600;color:@@TEXT@@;line-height:1.4}
+.aw .afaq-ic{flex-shrink:0;width:22px;height:22px;border-radius:50%;border:1.5px solid @@BORDER@@;position:relative;transition:background .16s,border-color .16s}
+.aw .afaq-ic::before,.aw .afaq-ic::after{content:'';position:absolute;top:50%;left:50%;background:@@TEXT_MUTED@@;border-radius:2px;transition:opacity .2s,transform .2s}
 .aw .afaq-ic::before{width:10px;height:1.5px;transform:translate(-50%,-50%)}
 .aw .afaq-ic::after{width:1.5px;height:10px;transform:translate(-50%,-50%)}
-.aw .afaq-item.open .afaq-ic{background:#E5421A;border-color:#E5421A}
+.aw .afaq-item.open .afaq-ic{background:@@ACCENT@@;border-color:@@ACCENT@@}
 .aw .afaq-item.open .afaq-ic::before,.aw .afaq-item.open .afaq-ic::after{background:#fff}
 .aw .afaq-item.open .afaq-ic::after{transform:translate(-50%,-50%) rotate(90deg);opacity:0}
-.aw .afaq-btn:hover .afaq-q{color:#E5421A}
-.aw .afaq-btn:hover .afaq-ic{border-color:#E5421A}
+.aw .afaq-btn:hover .afaq-q{color:@@ACCENT@@}
+.aw .afaq-btn:hover .afaq-ic{border-color:@@ACCENT@@}
 .aw .afaq-panel{max-height:0;overflow:hidden;opacity:0;transition:max-height .35s cubic-bezier(.4,0,.2,1),opacity .3s,padding-bottom .3s}
 .aw .afaq-item.open .afaq-panel{opacity:1;padding-bottom:1rem}
-.aw .afaq-a{font-size:14px;color:#555;line-height:1.75}
-.aw .aabout{background:#1A1A1A;border-radius:12px;padding:1.65rem;margin:2.5rem 0 2rem;position:relative;overflow:hidden}
+.aw .afaq-a{font-size:14px;color:@@TEXT_MUTED@@;line-height:1.75}
+.aw .aabout{background:@@TEXT@@;border-radius:12px;padding:1.65rem;margin:2.5rem 0 2rem;position:relative;overflow:hidden}
 .aw .aabout::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(229,66,26,.2) 0%,transparent 70%);pointer-events:none}
-.aw .aabout-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#E5421A;display:block;margin-bottom:.5rem}
+.aw .aabout-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:@@ACCENT@@;display:block;margin-bottom:.5rem}
 .aw .aabout p{font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:.8rem}
-.aw .aabout-cta{display:inline-block;background:#E5421A !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;transition:background .16s}
-.aw .aabout-cta:hover{background:#C93A14 !important}
-.aw .accta{background:#FDF3F0;border:1.5px solid rgba(229,66,26,.25);border-radius:12px;padding:1.35rem;margin:2rem 0;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
-.aw .accta p{font-size:14px;color:#1A1A1A;line-height:1.55;flex:1;min-width:180px}
-.aw .accta p strong{color:#E5421A}
-.aw .accta-btn{display:inline-block;background:#E5421A !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;white-space:nowrap;transition:background .16s,transform .12s}
-.aw .accta-btn:hover{background:#C93A14 !important;transform:translateY(-1px)}
-.aw .afw{background:#fff;border:2px solid #E0DDD8;border-radius:12px;padding:1.65rem;margin:2rem 0}
-.aw .afh{font-family:'DM Serif Display',Georgia,serif;font-size:1.3rem;color:#1A1A1A;margin-bottom:.3rem}
-.aw .afss{font-size:13px;color:#555;margin-bottom:1.1rem;line-height:1.6}
+.aw .aabout-cta{display:inline-block;background:@@ACCENT@@ !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;transition:background .16s}
+.aw .aabout-cta:hover{background:@@ACCENT_HOVER@@ !important}
+.aw .accta{background:@@ACCENT_TINT_BG@@;border:1.5px solid rgba(229,66,26,.25);border-radius:12px;padding:1.35rem;margin:2rem 0;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.aw .accta p{font-size:14px;color:@@TEXT@@;line-height:1.55;flex:1;min-width:180px}
+.aw .accta p strong{color:@@ACCENT@@}
+.aw .accta-btn{display:inline-block;background:@@ACCENT@@ !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;white-space:nowrap;transition:background .16s,transform .12s}
+.aw .accta-btn:hover{background:@@ACCENT_HOVER@@ !important;transform:translateY(-1px)}
+.aw .afw{background:#fff;border:2px solid @@BORDER@@;border-radius:12px;padding:1.65rem;margin:2rem 0}
+.aw .afh{font-family:@@FONT_HEADING@@;font-size:1.3rem;color:@@TEXT@@;margin-bottom:.3rem}
+.aw .afss{font-size:13px;color:@@TEXT_MUTED@@;margin-bottom:1.1rem;line-height:1.6}
 .aw .afrow{display:grid;grid-template-columns:1fr 1fr;gap:.7rem;margin-bottom:.7rem}
 @media(max-width:480px){.aw .afrow{grid-template-columns:1fr}}
 .aw .afg{margin-bottom:.7rem}
-.aw .aflbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#555;display:block;margin-bottom:.3rem}
-.aw .afin,.aw .afta{width:100%;padding:.65rem .85rem;border:2px solid #E0DDD8;border-radius:8px;font-family:'DM Sans',system-ui,sans-serif;font-size:15px;color:#1A1A1A;background:#F4F3F0;outline:none;transition:border-color .16s}
-.aw .afin:focus,.aw .afta:focus{border-color:#E5421A;background:#fff}
+.aw .aflbl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:@@TEXT_MUTED@@;display:block;margin-bottom:.3rem}
+.aw .afin,.aw .afta{width:100%;padding:.65rem .85rem;border:2px solid @@BORDER@@;border-radius:8px;font-family:@@FONT_BODY@@;font-size:15px;color:@@TEXT@@;background:@@SURFACE_ALT@@;outline:none;transition:border-color .16s}
+.aw .afin:focus,.aw .afta:focus{border-color:@@ACCENT@@;background:#fff}
 .aw .afta{resize:vertical;min-height:80px}
-.aw .afsub{width:100%;padding:.85rem;font-size:15px;background:#E5421A !important;color:#ffffff !important;border:none;border-radius:8px;font-family:'DM Sans',system-ui,sans-serif;font-weight:700;cursor:pointer;transition:background .16s;display:flex;align-items:center;justify-content:center;gap:.5rem}
-.aw .afsub:hover:not(:disabled){background:#C93A14 !important}
+.aw .afsub{width:100%;padding:.85rem;font-size:15px;background:@@ACCENT@@ !important;color:#ffffff !important;border:none;border-radius:8px;font-family:@@FONT_BODY@@;font-weight:700;cursor:pointer;transition:background .16s;display:flex;align-items:center;justify-content:center;gap:.5rem}
+.aw .afsub:hover:not(:disabled){background:@@ACCENT_HOVER@@ !important}
 .aw .afsub:disabled{opacity:.55;cursor:not-allowed}
-.aw .afpriv{font-size:11px;color:#555;text-align:center;margin-top:.6rem;line-height:1.5}
+.aw .afpriv{font-size:11px;color:@@TEXT_MUTED@@;text-align:center;margin-top:.6rem;line-height:1.5}
 .aw .aferr{background:#fff0ee;border:1.5px solid #f5c6bc;border-radius:8px;padding:.75rem .9rem;font-size:13px;color:#c0392b;margin-bottom:.65rem;display:none;line-height:1.5}
 .aw .aferr.on{display:block}
 .aw .afspin{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:awspin .7s linear infinite;display:none}
@@ -180,14 +247,37 @@ FULL_CSS = """@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Dis
 @keyframes awspin{to{transform:rotate(360deg)}}
 .aw .afconf{text-align:center;padding:1.25rem;display:none}
 .aw .afconf.on{display:block}
-.aw .afconf p{color:#555;font-size:14px;line-height:1.65}
-.aw .asrc{margin:2rem 0 1rem;padding-top:1.5rem;border-top:1px solid #E0DDD8}
-.aw .asrc-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#555;margin-bottom:.7rem;display:block}
+.aw .afconf p{color:@@TEXT_MUTED@@;font-size:14px;line-height:1.65}
+.aw .asrc{margin:2rem 0 1rem;padding-top:1.5rem;border-top:1px solid @@BORDER@@}
+.aw .asrc-t{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:@@TEXT_MUTED@@;margin-bottom:.7rem;display:block}
 .aw .asrc ol{margin-left:1.25rem}
-.aw .asrc li{font-size:12px;color:#555;margin-bottom:.3rem;line-height:1.5}
-.aw .asrc a{color:#E5421A !important;text-decoration:none !important}
+.aw .asrc li{font-size:12px;color:@@TEXT_MUTED@@;margin-bottom:.3rem;line-height:1.5}
+.aw .asrc a{color:@@ACCENT@@ !important;text-decoration:none !important}
 .aw .asrc a:hover{text-decoration:underline !important}
 @media(max-width:600px){.aw{padding:1.75rem .9rem 3rem}.aw .accta{flex-direction:column}.aw .accta-btn{width:100%;text-align:center;display:block}}"""
+
+
+def _build_full_css(cfg: dict) -> str:
+    """Substitutes brand color/font tokens into the shared CSS structure."""
+    style = cfg['style']
+    colors = style['colors']
+    fonts = style['fonts']
+    css = _CSS_TEMPLATE
+    css = css.replace('@@GOOGLE_FONTS_URL@@', style['google_fonts_url'])
+    css = css.replace('@@FONT_BODY@@', fonts['body'])
+    css = css.replace('@@FONT_HEADING@@', fonts['heading'])
+    css = css.replace('@@ACCENT_HOVER@@', colors['accent_hover'])
+    css = css.replace('@@ACCENT_TINT_BG@@', colors['accent_tint_bg'])
+    css = css.replace('@@ACCENT@@', colors['accent'])
+    css = css.replace('@@TEXT_MUTED@@', colors['text_muted'])
+    css = css.replace('@@TEXT@@', colors['text'])
+    css = css.replace('@@BORDER@@', colors['border'])
+    css = css.replace('@@SURFACE_ALT@@', colors['surface_alt'])
+    return css
+
+
+BRAND_CONTEXT = _build_brand_context(TENANT_CONFIG)
+FULL_CSS = _build_full_css(TENANT_CONFIG)
 
 
 def assemble_spotlight_html(body, sources, seo_title, year=None):

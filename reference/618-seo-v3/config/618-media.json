@@ -57,7 +57,7 @@
     "faq_answers_must_be_written": true,
     "article_perspective": "Expert advice TO potential clients — never written as if the reader is doing the task themselves",
     "word_count_target": "900-1200 words",
-    "style_reference_path": "style_reference.txt",
+    "style_reference_path": "../modules/style_reference.txt",
     "writing_rules": [
       { "id": "headings_earn_place", "title": "HEADINGS MUST EARN THEIR PLACE",
         "body": "Every H2 must ask a question, make a specific promise, or state a useful fact. Never use a keyword phrase as a heading.\nBad: Brand Video Strategy Sydney. Good: Why Most Brand Videos Fail Before the Camera Rolls." },
