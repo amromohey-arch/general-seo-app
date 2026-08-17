@@ -183,7 +183,7 @@ _CSS_TEMPLATE = """@import url('@@GOOGLE_FONTS_URL@@');
 .aw .ab ul,.aw .ab ol{margin:.75rem 0 1.15rem 1.5rem}
 .aw .ab li{margin-bottom:.5rem;color:@@TEXT@@}
 .aw .ab strong{font-weight:700}
-.aw .ab a{color:@@ACCENT@@ !important;text-decoration:none !important;border-bottom:1px solid rgba(229,66,26,.3);transition:border-color .15s}
+.aw .ab a{color:@@ACCENT@@ !important;text-decoration:none !important;border-bottom:1px solid rgba(@@ACCENT_RGB@@,.3);transition:border-color .15s}
 .aw .ab a:hover{border-color:@@ACCENT@@ !important}
 .aw .apq{border-left:3px solid @@ACCENT@@;padding:.9rem 1.25rem;margin:1.75rem 0;background:@@ACCENT_TINT_BG@@;border-radius:0 8px 8px 0;font-family:@@FONT_HEADING@@;font-size:1.05rem;color:@@TEXT@@;font-style:italic;line-height:1.6}
 .aw .atip{background:@@TEXT@@;border-radius:10px;padding:1.25rem 1.5rem;margin:1.75rem 0}
@@ -216,12 +216,12 @@ _CSS_TEMPLATE = """@import url('@@GOOGLE_FONTS_URL@@');
 .aw .afaq-item.open .afaq-panel{opacity:1;padding-bottom:1rem}
 .aw .afaq-a{font-size:14px;color:@@TEXT_MUTED@@;line-height:1.75}
 .aw .aabout{background:@@TEXT@@;border-radius:12px;padding:1.65rem;margin:2.5rem 0 2rem;position:relative;overflow:hidden}
-.aw .aabout::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(229,66,26,.2) 0%,transparent 70%);pointer-events:none}
+.aw .aabout::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;background:radial-gradient(circle,rgba(@@ACCENT_RGB@@,.2) 0%,transparent 70%);pointer-events:none}
 .aw .aabout-lbl{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:@@ACCENT@@;display:block;margin-bottom:.5rem}
 .aw .aabout p{font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.65;margin-bottom:.8rem}
 .aw .aabout-cta{display:inline-block;background:@@ACCENT@@ !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;transition:background .16s}
 .aw .aabout-cta:hover{background:@@ACCENT_HOVER@@ !important}
-.aw .accta{background:@@ACCENT_TINT_BG@@;border:1.5px solid rgba(229,66,26,.25);border-radius:12px;padding:1.35rem;margin:2rem 0;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.aw .accta{background:@@ACCENT_TINT_BG@@;border:1.5px solid rgba(@@ACCENT_RGB@@,.25);border-radius:12px;padding:1.35rem;margin:2rem 0;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .aw .accta p{font-size:14px;color:@@TEXT@@;line-height:1.55;flex:1;min-width:180px}
 .aw .accta p strong{color:@@ACCENT@@}
 .aw .accta-btn{display:inline-block;background:@@ACCENT@@ !important;color:#ffffff !important;font-weight:700;font-size:13.5px;padding:.65rem 1.35rem;border-radius:8px;text-decoration:none !important;white-space:nowrap;transition:background .16s,transform .12s}
@@ -257,6 +257,15 @@ _CSS_TEMPLATE = """@import url('@@GOOGLE_FONTS_URL@@');
 @media(max-width:600px){.aw{padding:1.75rem .9rem 3rem}.aw .accta{flex-direction:column}.aw .accta-btn{width:100%;text-align:center;display:block}}"""
 
 
+def _hex_to_rgb_str(hex_color: str) -> str:
+    """'#E5421A' -> '229,66,26', for building rgba(...) values from a hex token."""
+    h = hex_color.lstrip('#')
+    if len(h) == 3:
+        h = ''.join(c * 2 for c in h)
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    return f'{r},{g},{b}'
+
+
 def _build_full_css(cfg: dict) -> str:
     """Substitutes brand color/font tokens into the shared CSS structure."""
     style = cfg['style']
@@ -268,6 +277,7 @@ def _build_full_css(cfg: dict) -> str:
     css = css.replace('@@FONT_HEADING@@', fonts['heading'])
     css = css.replace('@@ACCENT_HOVER@@', colors['accent_hover'])
     css = css.replace('@@ACCENT_TINT_BG@@', colors['accent_tint_bg'])
+    css = css.replace('@@ACCENT_RGB@@', _hex_to_rgb_str(colors['accent']))
     css = css.replace('@@ACCENT@@', colors['accent'])
     css = css.replace('@@TEXT_MUTED@@', colors['text_muted'])
     css = css.replace('@@TEXT@@', colors['text'])
