@@ -46,3 +46,21 @@ those steps from the customer's path entirely.
    platform-wide
 4. Where the content publishes (Squarespace, WordPress, etc.) —
    determines output format, not something hand-configured
+
+## Decisions made 2026-08-18
+
+**Multi-tenant config loading:** one process per tenant, config selected
+via `CONFIG_PATH` at deploy time (same as `generator.py`'s current
+behavior) — not per-request tenant resolution. Deliberately deferred:
+per-request resolution would require passing tenant context through every
+function instead of using module-level constants computed at import, and
+there's no self-serve signup flow that needs it yet. Revisit only if/when
+tenants can self-provision instead of being onboarded manually.
+
+**Gemini API usage:** one shared API key across all tenants, with a
+per-tenant usage counter and a hard monthly cap read from that tenant's
+config, enforced in code — not separate keys per tenant, not a full
+billing/metering system. Purpose is a safety net against a bug or runaway
+loop burning quota, not cost allocation between paying customers. Revisit
+separate keys only if an external party ever needs isolated, billable
+usage.
