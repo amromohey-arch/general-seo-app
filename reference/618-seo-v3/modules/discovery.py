@@ -18,23 +18,61 @@ Output: a ranked, deduped list of candidate clusters, same shape cluster_keyword
 already produces, ready to feed straight into generate_article_html.
 """
 import json
+import os
 import time
 from modules.keywords import get_autocomplete_suggestions, expand_keywords_with_ai, cluster_keywords
 from modules.search_console import get_sc_keywords
 from modules.storage import load_sc_token, check_duplicate, log_ideas_run, get_pending, get_existing_titles
 from modules.gemini_client import gemini
 
+_MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_CONFIG_PATH = os.path.normpath(os.path.join(_MODULES_DIR, '..', 'config', '618-media.json'))
+
+_config_path_env = os.environ.get('CONFIG_PATH', '').strip()
+if _config_path_env:
+    CONFIG_PATH = (
+        _config_path_env if os.path.isabs(_config_path_env)
+        else os.path.normpath(os.path.join(_MODULES_DIR, _config_path_env))
+    )
+else:
+    CONFIG_PATH = _DEFAULT_CONFIG_PATH
+
+_REQUIRED_CONFIG_PATHS = [
+    'tenant.business_name',
+    'seed_topics.topics',
+]
+
+
+def _load_tenant_config(path: str) -> dict:
+    if not os.path.exists(path):
+        raise RuntimeError(f"Tenant config not found at '{path}'. Set the CONFIG_PATH env var "
+                            f"to a valid config file, or check that the default config exists.")
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Tenant config at '{path}' is not valid JSON: {e}") from e
+
+    for dotted_path in _REQUIRED_CONFIG_PATHS:
+        node = cfg
+        for part in dotted_path.split('.'):
+            if not isinstance(node, dict) or part not in node:
+                raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
+            node = node[part]
+
+    return cfg
+
+
+TENANT_CONFIG = _load_tenant_config(CONFIG_PATH)
+
 # Music video first, deliberately — this is 618 Media's lead positioning, not
 # one vertical among equals. Covers the practical angles people actually
 # search (cost, planning, style choice) alongside the format itself.
-SEED_TOPICS = [
-    "music video production sydney",
-    "music video cost",
-    "how to plan a music video",
-    "music video director",
-    "narrative music video",
-    "music video for independent artists",
-]
+# (Comment describes 618's specific strategy; the actual seed list itself is
+# now tenant data, read from config/618-media.json's seed_topics.topics.)
+SEED_TOPICS = TENANT_CONFIG['seed_topics']['topics']
+
+BUSINESS_NAME = TENANT_CONFIG['tenant']['business_name']
 
 
 def _get_trend_scores(terms: list[str]) -> dict:
@@ -103,7 +141,7 @@ def _filter_semantic_overlap(candidates: list) -> list:
                                  for i, c in enumerate(candidates))
 
     prompt = (
-        "You are an editor for 618 Media, a video production company. Below is a list of "
+        f"You are an editor for {BUSINESS_NAME}. Below is a list of "
         "ALREADY PUBLISHED articles, and a numbered list of CANDIDATE new article topics.\n\n"
         "For each candidate, decide if it substantially overlaps with an already-published article — "
         "meaning a reader would find them repetitive covering the same ground, even if the exact "
