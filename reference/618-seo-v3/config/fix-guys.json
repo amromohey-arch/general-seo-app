@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "tenant": { "id": "fix-guys", "business_name": "The Fix Guys", "preset": "retail_repair" },
+  "brand": {
+    "about": "The Fix Guys is a walk-in repair and key-cutting shop at Erina Fair, Central Coast, next to Big W. We cut keys, program car keys and remotes, replace watch batteries, repair watches, clean jewellery, repair shoes and leather goods, engrave gifts, and sharpen knives and tools. Walk in, no booking needed — most jobs done the same day.",
+    "services": ["key cutting", "car keys and remotes", "watch batteries", "watch repairs", "jewellery cleaning", "shoe repairs", "leather repairs", "engraving", "sharpening", "giftware and keyrings"],
+    "location": { "city": "Erina Fair", "region": "Central Coast, NSW", "mention_rule": "Always mention Erina Fair, next to Big W, and Central Coast where a visit/CTA is implied — opposite of 618 Media's rule. Central Coast identity is the point for a local walk-in shop." },
+    "contact": { "website": "https://www.thefixguys.com.au", "phone": "0415 409 879" },
+    "landmines": [
+      "NEVER say 'Sydney & NSW' — Fix Guys is Erina Fair / Central Coast only",
+      "NEVER use bespoke/premium/curated/'experience' language — retail, walk-in, practical, not craft or luxury",
+      "ALWAYS mention Erina Fair, next to Big W on CTAs where a visit is implied"
+    ]
+  },
+  "content_rules": {
+    "banned_words": ["bespoke", "premium", "curated", "experience", "we pride ourselves on", "trusted by the community", "state-of-the-art"],
+    "first_person_allowed": true,
+    "no_fake_testimonials": true,
+    "keyword_stuffing_forbidden": true,
+    "primary_keyword_max_uses": 3,
+    "faq_answers_must_be_written": true,
+    "article_perspective": "Practical shop-counter advice to a local customer — direct, no corporate framing. Not written as if the reader is doing the repair themselves.",
+    "writing_rules": [
+      { "id": "shop_counter_tone", "title": "SPEAK LIKE A SHOP COUNTER, NOT A BRAND STRATEGIST", "body": "'Broken strap? We'll fix it.' Not 'Experience premium craftsmanship.'" },
+      { "id": "short_sentences_real_verbs", "title": "SHORT SENTENCES, REAL VERBS", "body": "'We cut keys. We program remotes. We fix watches.' Not 'We specialise in bespoke key solutions.'" },
+      { "id": "price_time_signals_hero", "title": "PRICE/TIME SIGNALS ARE THE HERO", "body": "'$15', '5 minutes', 'while you wait', 'same day' — this is why people pick Fix Guys over a chain." },
+      { "id": "always_mention_location", "title": "ALWAYS MENTION ERINA FAIR + NEXT TO BIG W", "body": "Geographic specificity matters for walk-in retail — mention it wherever a visit or CTA is implied." },
+      { "id": "use_we_not_our_team", "title": "USE 'WE', NOT 'OUR TEAM' OR 'OUR SPECIALISTS'", "body": "Human and direct." },
+      { "id": "no_em_dashes", "title": "NO EM DASHES", "body": "Same rule as 618." }
+    ]
+  },
+  "style": {
+    "google_fonts_url": null,
+    "fonts": { "heading": "'Glancyr', Georgia, serif", "body": "'JustSans', 'Helvetica Neue', helvetica, arial, sans-serif" },
+    "colors": { "accent": "#e31211", "accent_hover": "#7d0303", "text": "#141414", "text_muted": "#4d4d4d", "background": "#fffefa", "surface_alt": "#f8f7f7", "border": "#e6e6e6", "accent_tint_bg": "#f5efef", "dark_bg": "#301d1d" }
+  },
+  "social_video": {
+    "enabled": true,
+    "approved_hooks": [
+      "Nobody tells you this about key cutting.",
+      "We fix that in five minutes.",
+      "Walk in. We'll sort it.",
+      "Most people don't know we do this.",
+      "Skip the wait. Come straight in.",
+      "This costs less than you think.",
+      "We see this every week.",
+      "No booking needed for this one.",
+      "Bring it in, we'll quote it on the spot.",
+      "You don't need a new one — you need this fixed."
+    ],
+    "caption_tagline": "The Fix Guys — Erina Fair, Central Coast. 0415 409 879.",
+    "hashtags": { "location": ["#erinafair", "#centralcoast", "#erina", "#centralcoastnsw", "#gosford"], "audience": ["#centralcoastbusiness", "#centralcoastshopping", "#localbusiness"], "brand": ["#thefixguys"] }
+  },
+  "funnel": { "enabled": false, "stages": [] },
+  "seed_topics": {
+    "strategy": "fixed_list",
+    "topics": ["key cutting near me", "how much does it cost to get a key cut", "lost car key replacement central coast", "car key battery replacement cost", "watch battery replacement erina fair", "watch repair central coast", "engraving central coast", "shoe repair central coast"]
+  }
+}

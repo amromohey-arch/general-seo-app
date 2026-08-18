@@ -29,18 +29,26 @@ else:
     CONFIG_PATH = _DEFAULT_CONFIG_PATH
 
 # Every dotted path here is actually read via bracket access somewhere in
-# _build_brand_context / _build_full_css -- verified field-by-field by
-# removing each one from a real config and confirming it currently produces
-# an uncaught KeyError, not a clean error. Deliberately NOT required because
-# nothing reads them: brand.contact (incl. lead_form), content_rules.
-# word_count_target, content_rules.style_reference_path,
-# style.colors.background, tenant.id, tenant.preset.
+# _build_brand_context / _build_full_css / the HTML-shell builders (About
+# block, contact form, byline) -- verified field-by-field by removing each
+# one from a real config and confirming it currently produces an uncaught
+# KeyError, not a clean error. brand.contact.website is required (used as
+# the About-block link, and as the fallback contact URL); everything else
+# under brand.contact (contact_page_url, calculator_url, fallback_email,
+# lead_form) is optional with a graceful fallback -- see _build_about_html,
+# _build_contact_form_html, _build_calculator_cta_html. Deliberately NOT
+# required because nothing reads them: content_rules.word_count_target,
+# content_rules.style_reference_path, style.colors.background, tenant.id,
+# tenant.preset.
 _REQUIRED_CONFIG_PATHS = [
     'tenant.business_name',
     'brand.about',
     'brand.services',
     'brand.landmines',
+    'brand.location.city',
+    'brand.location.region',
     'brand.location.mention_rule',
+    'brand.contact.website',
     'content_rules.banned_words',
     'content_rules.article_perspective',
     'content_rules.first_person_allowed',
@@ -315,37 +323,60 @@ BRAND_CONTEXT = _build_brand_context(TENANT_CONFIG)
 FULL_CSS = _build_full_css(TENANT_CONFIG)
 
 
-def assemble_spotlight_html(body, sources, seo_title, year=None):
-    """Same brand shell as _assemble_html (CSS, byline, About block, contact
-    form) but skips the pricing table, FAQ, and Calculator CTA — none of
-    those fit commentary content. Adds a real sources block instead, built
-    from the actual search results the article was grounded in, not from
-    the model attributing a citation to memory."""
-    import datetime as _dt
-    year = year or _dt.datetime.now().year
-    uid = _uid()
-    article_title = seo_title.replace(' | 618 Media', '').strip()
+# ─── HTML shell (byline, About block, contact form, Calculator CTA) ────────
+# Same idea as BRAND_CONTEXT/FULL_CSS: pull tenant identity out of literals
+# into config, computed once here and reused by assemble_spotlight_html and
+# _assemble_html. brand.contact.website is required (About-block link and
+# contact-URL fallback); contact_page_url, calculator_url, fallback_email,
+# and lead_form are all optional with a graceful default -- a tenant who
+# hasn't filled those in yet still gets a working About block and form, just
+# without the extras.
+_TITLE_SUFFIX = f" | {TENANT_CONFIG['tenant']['business_name']}"
 
-    about_html = (
-        '<div class="aabout"><span class="aabout-lbl">About 618 Media</span>'
-        '<p>618 Media is a video production company based in NSW, working with businesses, artists, and organisations across Sydney and NSW on music videos, brand stories, corporate video, event coverage, real estate, social media content, and more.</p>'
-        '<p>Every project starts with a conversation about what you want to achieve. We handle everything from concept through to final delivery.</p>'
-        '<a href="https://www.618media.com.au/contact-us" class="aabout-cta" style="color:#ffffff !important">Get in Touch</a></div>'
+
+def _strip_title_suffix(seo_title: str) -> str:
+    return seo_title.replace(_TITLE_SUFFIX, '').strip()
+
+
+def _build_byline_location(cfg: dict) -> str:
+    loc = cfg['brand']['location']
+    return f"{loc['city']} &amp; {loc['region']}"
+
+
+def _build_about_html(cfg: dict) -> str:
+    business_name = cfg['tenant']['business_name']
+    contact = cfg['brand'].get('contact', {})
+    contact_url = contact.get('contact_page_url') or contact['website']
+    return (
+        f'<div class="aabout"><span class="aabout-lbl">About {business_name}</span>'
+        f'<p>{cfg["brand"]["about"]}</p>'
+        f'<a href="{contact_url}" class="aabout-cta" style="color:#ffffff !important">Get in Touch</a></div>'
     )
 
-    sources_html = ''
-    if sources:
-        links = ''.join(
-            f'<li><a href="{s.get("uri", "")}" target="_blank" rel="noopener">{s.get("title") or s.get("domain") or s.get("uri", "")}</a></li>'
-            for s in sources if s.get('uri')
-        )
-        if links:
-            sources_html = f'<div class="asrc"><span class="asrc-lbl">Sources</span><ul>{links}</ul></div>'
 
-    form_html = (
+def _build_calculator_cta_html(cfg: dict) -> str:
+    """Only rendered for tenants that actually have this tool -- it's not a
+    universal feature (Fix Guys has no equivalent of a project calculator)."""
+    calculator_url = cfg['brand'].get('contact', {}).get('calculator_url')
+    if not calculator_url:
+        return ''
+    return (
+        '<div class="accta"><p><strong>Not sure what video you need?</strong> Use our free Video Project Calculator '
+        'to get a tailored recommendation and rough estimate in under 2 minutes.</p>'
+        f'<a href="{calculator_url}" class="accta-btn" style="color:#ffffff !important">Use the Calculator</a></div>'
+    )
+
+
+def _build_contact_form_html(cfg: dict, uid: str) -> str:
+    fallback_email = cfg['brand'].get('contact', {}).get('fallback_email')
+    error_email = f' or email us at <strong>{fallback_email}</strong>' if fallback_email else ''
+    response_note = cfg['brand'].get('contact', {}).get('lead_form', {}).get(
+        'response_note', 'A team member reviews every message personally. No automated replies.'
+    )
+    return (
         f'<div class="afw"><h3 class="afh">Start Your Project or Ask a Question</h3>'
-        f'<p class="afss">Fill in your details and a member of the 618 Media team will get back to you personally.</p>'
-        f'<div class="aferr" id="aferr{uid}">Something went wrong. Please try again or email us at <strong>info@618media.com.au</strong></div>'
+        f'<p class="afss">Fill in your details and a member of our team will get back to you personally.</p>'
+        f'<div class="aferr" id="aferr{uid}">Something went wrong. Please try again{error_email}</div>'
         f'<div id="aform{uid}"><div class="afrow">'
         f'<div class="afg"><label class="aflbl">Name *</label><input class="afin" type="text" id="afn{uid}" placeholder="Your full name"></div>'
         f'<div class="afg"><label class="aflbl">Phone *</label><input class="afin" type="tel" id="afp{uid}" placeholder="04XX XXX XXX"></div>'
@@ -353,12 +384,21 @@ def assemble_spotlight_html(body, sources, seo_title, year=None):
         f'<div class="afg"><label class="aflbl">Your question or project idea</label><textarea class="afta" id="afq{uid}" placeholder="Tell us what you are working on..."></textarea></div>'
         f'<button type="button" class="afsub" id="afsub{uid}" style="color:#ffffff !important">'
         f'<span id="afsubt{uid}">Send Message</span><span class="afspin" id="afspin{uid}"></span></button>'
-        f'<p class="afpriv">A team member reviews every message personally. No automated replies.</p></div>'
+        f'<p class="afpriv">{response_note}</p></div>'
         f'<div class="afconf" id="afconf{uid}"><span style="font-size:2rem;display:block;margin-bottom:.5rem">&#127916;</span>'
-        f'<p><strong>Message received.</strong> The 618 Media team will get back to you personally, usually within a few hours on business days.</p></div></div>'
+        f'<p><strong>Message received.</strong> Our team will get back to you personally, usually within a few hours on business days.</p></div></div>'
     )
 
-    js = (
+
+def _build_contact_form_js(cfg: dict, uid: str, article_title: str, extra_js: str = '') -> str:
+    """extra_js is injected right before the auto-year handler -- used by
+    _assemble_html to add the FAQ-accordion toggle, which assemble_spotlight_html
+    doesn't need (it has no FAQ section)."""
+    business_name = cfg['tenant']['business_name']
+    lead_form = cfg['brand'].get('contact', {}).get('lead_form', {})
+    subject_prefix = lead_form.get('subject_prefix', 'Enquiry:')
+    from_name = lead_form.get('from_name', business_name)
+    return (
         f'<script>\n(function(){{\n'
         f'  var b=document.getElementById("afsub{uid}");\n'
         f'  if(!b)return;\n'
@@ -373,23 +413,63 @@ def assemble_spotlight_html(body, sources, seo_title, year=None):
         f'    if(!n||!p||!e){{alert("Please fill in your name, phone number, and email.");return;}}\n'
         f'    b.disabled=true;txt.textContent="Sending...";spin.classList.add("on");err.classList.remove("on");\n'
         f'    try{{\n'
-        f'      var r=await fetch("https://api.web3forms.com/submit",{{method:"POST",headers:{{"Content-Type":"application/json","Accept":"application/json"}},body:JSON.stringify({{"access_key":"{WEB3FORMS_KEY}","subject":"Enquiry: {article_title}","from_name":"618 Media Blog","name":n,"email":e,"phone":p,"message":"Name: "+n+"\\nPhone: "+p+"\\nEmail: "+e+"\\nArticle: {article_title}"+"\\nQuestion: "+q,"botcheck":""}})}});\n'
+        f'      var r=await fetch("https://api.web3forms.com/submit",{{method:"POST",headers:{{"Content-Type":"application/json","Accept":"application/json"}},body:JSON.stringify({{"access_key":"{WEB3FORMS_KEY}","subject":"{subject_prefix} {article_title}","from_name":"{from_name}","name":n,"email":e,"phone":p,"message":"Name: "+n+"\\nPhone: "+p+"\\nEmail: "+e+"\\nArticle: {article_title}"+"\\nQuestion: "+q,"botcheck":""}})}});\n'
         f'      var d=await r.json();\n'
         f'      if(d.success){{document.getElementById("aform{uid}").style.display="none";document.getElementById("afconf{uid}").classList.add("on");}}\n'
         f'      else throw new Error(d.message||"failed");\n'
         f'    }}catch(ex){{err.classList.add("on");b.disabled=false;txt.textContent="Send Message";spin.classList.remove("on");}}\n'
         f'  }});\n'
+        f'{extra_js}'
         f'  var y=new Date().getFullYear().toString();\n'
         f'  document.querySelectorAll("#aw{uid} .auto-year").forEach(function(el){{el.textContent=y;}});\n'
         f'}})();\n</script>'
     )
+
+
+def _build_faq_toggle_js(uid: str) -> str:
+    return (
+        f'  document.querySelectorAll("#aw{uid} .afaq-btn").forEach(function(btn){{\n'
+        f'    btn.addEventListener("click",function(){{\n'
+        f'      var item=this.closest(".afaq-item");\n'
+        f'      var isOpen=item.classList.contains("open");\n'
+        f'      document.querySelectorAll("#aw{uid} .afaq-item").forEach(function(i){{i.classList.remove("open");i.querySelector(".afaq-panel").style.maxHeight="0";}});\n'
+        f'      if(!isOpen){{item.classList.add("open");var panel=item.querySelector(".afaq-panel");panel.style.maxHeight=panel.scrollHeight+"px";}}\n'
+        f'    }});\n'
+        f'  }});\n'
+    )
+
+
+def assemble_spotlight_html(body, sources, seo_title, year=None):
+    """Same brand shell as _assemble_html (CSS, byline, About block, contact
+    form) but skips the pricing table, FAQ, and Calculator CTA — none of
+    those fit commentary content. Adds a real sources block instead, built
+    from the actual search results the article was grounded in, not from
+    the model attributing a citation to memory."""
+    import datetime as _dt
+    year = year or _dt.datetime.now().year
+    uid = _uid()
+    article_title = _strip_title_suffix(seo_title)
+
+    about_html = _build_about_html(TENANT_CONFIG)
+
+    sources_html = ''
+    if sources:
+        links = ''.join(
+            f'<li><a href="{s.get("uri", "")}" target="_blank" rel="noopener">{s.get("title") or s.get("domain") or s.get("uri", "")}</a></li>'
+            for s in sources if s.get('uri')
+        )
+        if links:
+            sources_html = f'<div class="asrc"><span class="asrc-lbl">Sources</span><ul>{links}</ul></div>'
+
+    form_html = _build_contact_form_html(TENANT_CONFIG, uid)
+    js = _build_contact_form_js(TENANT_CONFIG, uid, article_title)
 
     return (
         f'<style>\n{FULL_CSS}\n.aw .asrc{{margin:1.75rem 0;padding-top:1.25rem;border-top:1px solid #E0DDD8}}'
         f'.aw .asrc-lbl{{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#888;display:block;margin-bottom:.5rem}}'
         f'.aw .asrc ul{{margin:0;padding-left:1.1rem}}.aw .asrc a{{color:#555;font-size:13px}}\n</style>\n\n'
         f'<div class="aw" id="aw{uid}">\n'
-        f'  <div class="am"><span>By 618 Media</span><span>Updated <span class="auto-year">{year}</span></span><span>Sydney &amp; NSW</span></div>\n'
+        f'  <div class="am"><span>By {TENANT_CONFIG["tenant"]["business_name"]}</span><span>Updated <span class="auto-year">{year}</span></span><span>{_build_byline_location(TENANT_CONFIG)}</span></div>\n'
         f'  <div class="ab">\n{body}\n  </div>\n'
         f'  {sources_html}\n'
         f'  {about_html}\n'
@@ -511,13 +591,20 @@ def build_prompt_summary(cluster: dict, answers: dict, seo_title: str, seo_descr
 
 
 def _assemble_html(uid, body, table_data, faq_items, seo_title, year, image_html=''):
-    article_title = seo_title.replace(' | 618 Media', '').strip()
+    article_title = _strip_title_suffix(seo_title)
+    business_name = TENANT_CONFIG['tenant']['business_name']
 
     table_html = ''
     if table_data and table_data.get('headers'):
         headers = ''.join(f'<th>{h}</th>' for h in table_data['headers'])
         rows = ''.join('<tr>' + ''.join(f'<td>{c}</td>' for c in row) + '</tr>' for row in table_data.get('rows', []))
-        footnote = table_data.get('footnote', 'All price ranges are estimates only. Contact 618 Media or use the Video Project Calculator for a tailored quote.')
+        calculator_url = TENANT_CONFIG['brand'].get('contact', {}).get('calculator_url')
+        default_footnote = (
+            f'All price ranges are estimates only. Contact {business_name} or use the Video Project Calculator for a tailored quote.'
+            if calculator_url else
+            f'All price ranges are estimates only. Contact {business_name} for a tailored quote.'
+        )
+        footnote = table_data.get('footnote', default_footnote)
         table_html = (
             f'<div class="atbw"><table class="atb"><thead><tr>{headers}</tr></thead><tbody>{rows}</tbody></table></div>'
             f'<p style="font-size:12px;color:#888;margin-top:.5rem;font-style:italic">{footnote}</p>'
@@ -533,72 +620,15 @@ def _assemble_html(uid, body, table_data, faq_items, seo_title, year, image_html
         )
     faq_html = f'<div class="afaq"><h2 class="afaq-t">Frequently Asked Questions</h2>{faq_items_html}</div>'
 
-    about_html = (
-        '<div class="aabout"><span class="aabout-lbl">About 618 Media</span>'
-        '<p>618 Media is a video production company based in NSW, working with businesses, artists, and organisations across Sydney and NSW on music videos, brand stories, corporate video, event coverage, real estate, social media content, and more.</p>'
-        '<p>Every project starts with a conversation about what you want to achieve. We handle everything from concept through to final delivery.</p>'
-        '<a href="https://www.618media.com.au/contact-us" class="aabout-cta" style="color:#ffffff !important">Get in Touch</a></div>'
-    )
-
-    cta_html = (
-        '<div class="accta"><p><strong>Not sure what video you need?</strong> Use our free Video Project Calculator to get a tailored recommendation and rough estimate in under 2 minutes.</p>'
-        '<a href="https://www.618media.com.au/my-video-calculator" class="accta-btn" style="color:#ffffff !important">Use the Calculator</a></div>'
-    )
-
-    form_html = (
-        f'<div class="afw"><h3 class="afh">Start Your Project or Ask a Question</h3>'
-        f'<p class="afss">Fill in your details and a member of the 618 Media team will get back to you personally.</p>'
-        f'<div class="aferr" id="aferr{uid}">Something went wrong. Please try again or email us at <strong>info@618media.com.au</strong></div>'
-        f'<div id="aform{uid}"><div class="afrow">'
-        f'<div class="afg"><label class="aflbl">Name *</label><input class="afin" type="text" id="afn{uid}" placeholder="Your full name"></div>'
-        f'<div class="afg"><label class="aflbl">Phone *</label><input class="afin" type="tel" id="afp{uid}" placeholder="04XX XXX XXX"></div>'
-        f'</div><div class="afg"><label class="aflbl">Email *</label><input class="afin" type="email" id="afe{uid}" placeholder="you@example.com"></div>'
-        f'<div class="afg"><label class="aflbl">Your question or project idea</label><textarea class="afta" id="afq{uid}" placeholder="Tell us what you are working on..."></textarea></div>'
-        f'<button type="button" class="afsub" id="afsub{uid}" style="color:#ffffff !important">'
-        f'<span id="afsubt{uid}">Send Message</span><span class="afspin" id="afspin{uid}"></span></button>'
-        f'<p class="afpriv">A team member reviews every message personally. No automated replies.</p></div>'
-        f'<div class="afconf" id="afconf{uid}"><span style="font-size:2rem;display:block;margin-bottom:.5rem">&#127916;</span>'
-        f'<p><strong>Message received.</strong> The 618 Media team will get back to you personally, usually within a few hours on business days.</p></div></div>'
-    )
-
-    js = (
-        f'<script>\n(function(){{\n'
-        f'  var b=document.getElementById("afsub{uid}");\n'
-        f'  if(!b)return;\n'
-        f'  b.addEventListener("click",async function(){{\n'
-        f'    var n=document.getElementById("afn{uid}").value.trim();\n'
-        f'    var p=document.getElementById("afp{uid}").value.trim();\n'
-        f'    var e=document.getElementById("afe{uid}").value.trim();\n'
-        f'    var q=document.getElementById("afq{uid}").value.trim();\n'
-        f'    var err=document.getElementById("aferr{uid}");\n'
-        f'    var spin=document.getElementById("afspin{uid}");\n'
-        f'    var txt=document.getElementById("afsubt{uid}");\n'
-        f'    if(!n||!p||!e){{alert("Please fill in your name, phone number, and email.");return;}}\n'
-        f'    b.disabled=true;txt.textContent="Sending...";spin.classList.add("on");err.classList.remove("on");\n'
-        f'    try{{\n'
-        f'      var r=await fetch("https://api.web3forms.com/submit",{{method:"POST",headers:{{"Content-Type":"application/json","Accept":"application/json"}},body:JSON.stringify({{"access_key":"{WEB3FORMS_KEY}","subject":"Enquiry: {article_title}","from_name":"618 Media Blog","name":n,"email":e,"phone":p,"message":"Name: "+n+"\\nPhone: "+p+"\\nEmail: "+e+"\\nArticle: {article_title}"+"\\nQuestion: "+q,"botcheck":""}})}});\n'
-        f'      var d=await r.json();\n'
-        f'      if(d.success){{document.getElementById("aform{uid}").style.display="none";document.getElementById("afconf{uid}").classList.add("on");}}\n'
-        f'      else throw new Error(d.message||"failed");\n'
-        f'    }}catch(ex){{err.classList.add("on");b.disabled=false;txt.textContent="Send Message";spin.classList.remove("on");}}\n'
-        f'  }});\n'
-        f'  document.querySelectorAll("#aw{uid} .afaq-btn").forEach(function(btn){{\n'
-        f'    btn.addEventListener("click",function(){{\n'
-        f'      var item=this.closest(".afaq-item");\n'
-        f'      var isOpen=item.classList.contains("open");\n'
-        f'      document.querySelectorAll("#aw{uid} .afaq-item").forEach(function(i){{i.classList.remove("open");i.querySelector(".afaq-panel").style.maxHeight="0";}});\n'
-        f'      if(!isOpen){{item.classList.add("open");var panel=item.querySelector(".afaq-panel");panel.style.maxHeight=panel.scrollHeight+"px";}}\n'
-        f'    }});\n'
-        f'  }});\n'
-        f'  var y=new Date().getFullYear().toString();\n'
-        f'  document.querySelectorAll("#aw{uid} .auto-year").forEach(function(el){{el.textContent=y;}});\n'
-        f'}})();\n</script>'
-    )
+    about_html = _build_about_html(TENANT_CONFIG)
+    cta_html = _build_calculator_cta_html(TENANT_CONFIG)
+    form_html = _build_contact_form_html(TENANT_CONFIG, uid)
+    js = _build_contact_form_js(TENANT_CONFIG, uid, article_title, extra_js=_build_faq_toggle_js(uid))
 
     return (
         f'<style>\n{FULL_CSS}\n</style>\n\n'
         f'<div class="aw" id="aw{uid}">\n'
-        f'  <div class="am"><span>By 618 Media</span><span>Updated <span class="auto-year">{year}</span></span><span>Sydney &amp; NSW</span></div>\n'
+        f'  <div class="am"><span>By {business_name}</span><span>Updated <span class="auto-year">{year}</span></span><span>{_build_byline_location(TENANT_CONFIG)}</span></div>\n'
         f'{image_html}'
         f'  <div class="ab">\n{body}\n  </div>\n'
         f'  {table_html}\n'
