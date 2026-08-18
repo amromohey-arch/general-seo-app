@@ -10,21 +10,60 @@ a tease. Visual suggestions are still included per section, but the spoken
 line is now the real content, not a cue.
 """
 import json
+import os
 import re
 from modules.gemini_client import gemini
 
-APPROVED_HOOKS = [
-    "Nobody mentions this.",
-    "I wish I knew this earlier.",
-    "Pause for a second.",
-    "Ever noticed this pattern?",
-    "Here's the real truth.",
-    "Let me save you hours.",
-    "This may surprise you.",
-    "You need this now.",
-    "You may not agree with this.",
-    "I just figured this out.",
+_MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
+_DEFAULT_CONFIG_PATH = os.path.normpath(os.path.join(_MODULES_DIR, '..', 'config', '618-media.json'))
+
+_config_path_env = os.environ.get('CONFIG_PATH', '').strip()
+if _config_path_env:
+    CONFIG_PATH = (
+        _config_path_env if os.path.isabs(_config_path_env)
+        else os.path.normpath(os.path.join(_MODULES_DIR, _config_path_env))
+    )
+else:
+    CONFIG_PATH = _DEFAULT_CONFIG_PATH
+
+_REQUIRED_CONFIG_PATHS = [
+    'social_video.approved_hooks',
+    'social_video.caption_tagline',
+    'social_video.hashtags.location',
+    'social_video.hashtags.audience',
+    'social_video.hashtags.brand',
+    'funnel.stages',
 ]
+
+
+def _load_tenant_config(path: str) -> dict:
+    if not os.path.exists(path):
+        raise RuntimeError(f"Tenant config not found at '{path}'. Set the CONFIG_PATH env var "
+                            f"to a valid config file, or check that the default config exists.")
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            cfg = json.load(f)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Tenant config at '{path}' is not valid JSON: {e}") from e
+
+    for dotted_path in _REQUIRED_CONFIG_PATHS:
+        node = cfg
+        for part in dotted_path.split('.'):
+            if not isinstance(node, dict) or part not in node:
+                raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
+            node = node[part]
+
+    for i, stage in enumerate(cfg['funnel']['stages']):
+        for key in ('id', 'name', 'job'):
+            if key not in stage:
+                raise RuntimeError(f"Tenant config at '{path}' is missing '{key}' on funnel.stages[{i}].")
+
+    return cfg
+
+
+TENANT_CONFIG = _load_tenant_config(CONFIG_PATH)
+
+APPROVED_HOOKS = TENANT_CONFIG['social_video']['approved_hooks']
 
 _TAG_RE = re.compile(r'<[^>]+>')
 
@@ -34,20 +73,34 @@ def _strip_html(html: str) -> str:
     return re.sub(r'\s+', ' ', text).strip()
 
 
-FUNNEL_DEFINITIONS = """
-TOFU (Top of Funnel) — job: get a stranger to stop scrolling. No pitch, no CTA push.
-Raw talking head, reaction/hot-take, or "reacting to something already popular then
-redirecting to what's realistic for our ICP." Builds pure awareness, nothing sold.
+def _build_funnel_definitions(cfg: dict) -> str:
+    """Reconstructs the funnel-stage briefing block fed to Gemini, from
+    funnel.stages in config instead of a hardcoded triple-quoted string."""
+    stages = cfg['funnel']['stages']
+    paragraphs = [f"{s['id']} ({s['name']}) — job: {s['job']}" for s in stages]
+    return '\n' + '\n\n'.join(paragraphs) + '\n'
 
-MOFU (Middle of Funnel) — job: show how we actually work. Mechanism breakdown or
-process walkthrough — a real piece of the process shown, not just the finished result.
-Sells the thinking, not the gear. Builds trust through transparency.
 
-BOFU (Bottom of Funnel) — job: prove it worked, get the message. Requires REAL proof —
-an actual client testimonial in their own words, or real results/analytics shown on
-screen. Never fabricate this. If the content has no genuine client proof behind it,
-it is not BOFU, even if it's persuasive — default to TOFU or MOFU instead.
-"""
+def _build_caption_instruction(cfg: dict) -> str:
+    """Reconstructs the caption-structure instruction line fed to Gemini,
+    from social_video.caption_tagline / hashtags in config."""
+    sv = cfg['social_video']
+    tagline = sv['caption_tagline']
+    location_tags = ' '.join(sv['hashtags']['location'])
+    audience_tags = ' '.join(sv['hashtags']['audience'])
+    brand_tag = sv['hashtags']['brand'][0]
+    return (
+        "- caption: ready-to-post Instagram caption for this Reel. Structure: 1-2 line hook that sets up the "
+        "video without repeating it verbatim, then one soft CTA line, then the line "
+        f"'{tagline}', then 10-15 relevant hashtags mixing location "
+        f"({location_tags}), service-specific, audience "
+        f"({audience_tags}), and {brand_tag}. No em dashes in the caption. No "
+        "generic/bot hashtags.\n"
+    )
+
+
+FUNNEL_DEFINITIONS = _build_funnel_definitions(TENANT_CONFIG)
+CAPTION_INSTRUCTION = _build_caption_instruction(TENANT_CONFIG)
 
 
 def generate_video_script(article_body_html: str, cluster: dict, seo_title: str, article_slug: str = '') -> dict:
@@ -93,12 +146,7 @@ def generate_video_script(article_body_html: str, cluster: dict, seo_title: str,
         "- word_count: integer, total words across all sections\n"
         "- funnel_stage: one of 'TOFU', 'MOFU', 'BOFU'\n"
         "- funnel_reason: one sentence, why this stage fits, in plain terms\n"
-        "- caption: ready-to-post Instagram caption for this Reel. Structure: 1-2 line hook that sets up the "
-        "video without repeating it verbatim, then one soft CTA line, then the line '618 Media, video "
-        "production across Sydney & NSW.', then 10-15 relevant hashtags mixing location "
-        "(#videoproductionsydney #sydneyvideographer #nswbusiness), service-specific, audience "
-        "(#smallbusinessaustralia #videomarketing), and #618media. No em dashes in the caption. No "
-        "generic/bot hashtags.\n"
+        + CAPTION_INSTRUCTION
     )
 
     try:

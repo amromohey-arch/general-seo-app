@@ -147,11 +147,11 @@
     "enabled": true,
     "stages": [
       { "id": "TOFU", "name": "Top of Funnel",
-        "job": "Get a stranger to stop scrolling. No pitch, no CTA push. Raw talking head, reaction/hot-take, or reacting to something already popular then redirecting to what's realistic for our ICP. Builds pure awareness, nothing sold." },
+        "job": "get a stranger to stop scrolling. No pitch, no CTA push.\nRaw talking head, reaction/hot-take, or \"reacting to something already popular then\nredirecting to what's realistic for our ICP.\" Builds pure awareness, nothing sold." },
       { "id": "MOFU", "name": "Middle of Funnel",
-        "job": "Show how we actually work. Mechanism breakdown or process walkthrough — a real piece of the process shown, not just the finished result. Sells the thinking, not the gear. Builds trust through transparency." },
+        "job": "show how we actually work. Mechanism breakdown or\nprocess walkthrough — a real piece of the process shown, not just the finished result.\nSells the thinking, not the gear. Builds trust through transparency." },
       { "id": "BOFU", "name": "Bottom of Funnel",
-        "job": "Prove it worked, get the message. Requires REAL proof — an actual client testimonial in their own words, or real results/analytics shown on screen. Never fabricate this. If the content has no genuine client proof behind it, it is not BOFU, even if it's persuasive — default to TOFU or MOFU instead." }
+        "job": "prove it worked, get the message. Requires REAL proof —\nan actual client testimonial in their own words, or real results/analytics shown on\nscreen. Never fabricate this. If the content has no genuine client proof behind it,\nit is not BOFU, even if it's persuasive — default to TOFU or MOFU instead." }
     ]
   },
 
