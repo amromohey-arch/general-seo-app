@@ -49,7 +49,9 @@ _REQUIRED_CONFIG_PATHS = [
     'content_rules.primary_keyword_max_uses',
     'content_rules.faq_answers_must_be_written',
     'content_rules.writing_rules',
-    'style.google_fonts_url',
+    # style.google_fonts_url is NOT required -- a tenant with self-hosted
+    # fonts (style.font_faces) instead of Google Fonts has no use for it.
+    # See _build_font_loading_css.
     'style.fonts.body',
     'style.fonts.heading',
     'style.colors.accent',
@@ -83,6 +85,12 @@ def _load_tenant_config(path: str) -> dict:
             if not isinstance(node, dict) or part not in node:
                 raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
             node = node[part]
+        # A key can be present but hold null/[] (e.g. from a config author
+        # leaving a placeholder) -- that's not a usable value, so treat it
+        # the same as missing rather than letting it fail downstream with a
+        # TypeError or silently degrade.
+        if node is None or node == []:
+            raise RuntimeError(f"Tenant config at '{path}' has '{dotted_path}' set to null/empty.")
 
     for i, rule in enumerate(cfg['content_rules']['writing_rules']):
         for key in ('title', 'body'):
@@ -168,8 +176,7 @@ def _build_brand_context(cfg: dict) -> str:
 # consistent "background" concept), rgba(...) tints derived from accent/white,
 # error-state colors (#f5c6bc/#fff0ee/#c0392b), and the box-shadow. Those are
 # UI-state/structural colors, not brand identity, so they stay fixed literals.
-_CSS_TEMPLATE = """@import url('@@GOOGLE_FONTS_URL@@');
-.aw *,.aw *::before,.aw *::after{box-sizing:border-box}
+_CSS_TEMPLATE = """@@FONT_LOADING@@.aw *,.aw *::before,.aw *::after{box-sizing:border-box}
 .aw{font-family:@@FONT_BODY@@;color:@@TEXT@@;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.75;width:100%;max-width:740px;margin:0 auto;padding:2.5rem 1.25rem 4rem}
 .aw .aey{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:@@ACCENT@@;display:block;margin-bottom:.65rem}
 .aw .at{font-family:@@FONT_HEADING@@;font-size:clamp(1.75rem,5vw,2.6rem);line-height:1.15;color:@@TEXT@@;margin-bottom:.65rem}
@@ -266,13 +273,31 @@ def _hex_to_rgb_str(hex_color: str) -> str:
     return f'{r},{g},{b}'
 
 
+def _build_font_loading_css(style: dict) -> str:
+    """Builds whatever goes at the very top of the CSS to make the configured
+    fonts available: a Google Fonts @import (style.google_fonts_url), one or
+    more self-hosted @font-face blocks (style.font_faces, for fonts not on
+    Google Fonts), both, or neither -- a tenant with no fonts configured here
+    just falls back to the plain-text fallback in style.fonts.body/heading."""
+    google_fonts_url = style.get('google_fonts_url')
+    import_line = f"@import url('{google_fonts_url}');\n" if google_fonts_url else ''
+
+    font_faces = style.get('font_faces') or []
+    face_blocks = ''.join(
+        f"@font-face{{font-family:'{ff['family']}';src:url('{ff['url']}') format('{ff.get('format', 'woff2')}');"
+        f"font-weight:{ff.get('weight', '400')};font-style:{ff.get('style', 'normal')};font-display:swap}}\n"
+        for ff in font_faces
+    )
+    return import_line + face_blocks
+
+
 def _build_full_css(cfg: dict) -> str:
     """Substitutes brand color/font tokens into the shared CSS structure."""
     style = cfg['style']
     colors = style['colors']
     fonts = style['fonts']
     css = _CSS_TEMPLATE
-    css = css.replace('@@GOOGLE_FONTS_URL@@', style['google_fonts_url'])
+    css = css.replace('@@FONT_LOADING@@', _build_font_loading_css(style))
     css = css.replace('@@FONT_BODY@@', fonts['body'])
     css = css.replace('@@FONT_HEADING@@', fonts['heading'])
     css = css.replace('@@ACCENT_HOVER@@', colors['accent_hover'])
