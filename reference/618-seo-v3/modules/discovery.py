@@ -59,6 +59,12 @@ def _load_tenant_config(path: str) -> dict:
             if not isinstance(node, dict) or part not in node:
                 raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
             node = node[part]
+        # A key can be present but hold null/[] (e.g. from a config author
+        # leaving a placeholder) -- that's not a usable value, so treat it
+        # the same as missing rather than letting it fail downstream with a
+        # TypeError or silently degrade.
+        if node is None or node == []:
+            raise RuntimeError(f"Tenant config at '{path}' has '{dotted_path}' set to null/empty.")
 
     return cfg
 
