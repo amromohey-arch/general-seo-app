@@ -32,7 +32,9 @@ _REQUIRED_CONFIG_PATHS = [
     'social_video.hashtags.location',
     'social_video.hashtags.audience',
     'social_video.hashtags.brand',
-    'funnel.stages',
+    # funnel.stages is NOT here -- it's only required when funnel.enabled is
+    # true (checked separately below). A tenant with no funnel model at all
+    # (funnel.enabled: false) should be able to leave stages empty.
 ]
 
 
@@ -52,11 +54,29 @@ def _load_tenant_config(path: str) -> dict:
             if not isinstance(node, dict) or part not in node:
                 raise RuntimeError(f"Tenant config at '{path}' is missing '{dotted_path}'.")
             node = node[part]
+        # A key can be present but hold null/[] (e.g. from a config author
+        # leaving a placeholder) -- that's not a usable value, so treat it
+        # the same as missing rather than letting it fail downstream with a
+        # TypeError or silently degrade.
+        if node is None or node == []:
+            raise RuntimeError(f"Tenant config at '{path}' has '{dotted_path}' set to null/empty.")
 
-    for i, stage in enumerate(cfg['funnel']['stages']):
-        for key in ('id', 'name', 'job'):
-            if key not in stage:
-                raise RuntimeError(f"Tenant config at '{path}' is missing '{key}' on funnel.stages[{i}].")
+    # funnel.stages is conditionally required: only when this tenant actually
+    # uses the funnel model. funnel.enabled defaults to True when absent, to
+    # preserve the original unconditional-requirement behavior for configs
+    # (like 618's) written before this flag existed.
+    funnel_cfg = cfg.get('funnel', {})
+    if funnel_cfg.get('enabled', True):
+        stages = funnel_cfg.get('stages')
+        if not stages:
+            raise RuntimeError(
+                f"Tenant config at '{path}' has 'funnel.stages' set to null/empty, "
+                f"but funnel.enabled is true."
+            )
+        for i, stage in enumerate(stages):
+            for key in ('id', 'name', 'job'):
+                if key not in stage:
+                    raise RuntimeError(f"Tenant config at '{path}' is missing '{key}' on funnel.stages[{i}].")
 
     return cfg
 
@@ -81,6 +101,18 @@ def _build_funnel_definitions(cfg: dict) -> str:
     return '\n' + '\n\n'.join(paragraphs) + '\n'
 
 
+def _build_funnel_prompt_block(funnel_definitions: str) -> str:
+    """The full FUNNEL CLASSIFICATION section of the prompt. Only meaningful
+    when the tenant actually uses a funnel model -- see FUNNEL_ENABLED."""
+    return (
+        f"FUNNEL CLASSIFICATION — this is 618 Media's real funnel system, not a generic marketing framework:\n"
+        f"{funnel_definitions}\n"
+        "Decide which stage this specific script actually fits, based on what it does, not what would be "
+        "nice. Most article-derived scripts land TOFU or MOFU — only classify BOFU if the script genuinely "
+        "includes real client proof (it should not invent any).\n\n"
+    )
+
+
 def _build_caption_instruction(cfg: dict) -> str:
     """Reconstructs the caption-structure instruction line fed to Gemini,
     from social_video.caption_tagline / hashtags in config."""
@@ -99,7 +131,13 @@ def _build_caption_instruction(cfg: dict) -> str:
     )
 
 
-FUNNEL_DEFINITIONS = _build_funnel_definitions(TENANT_CONFIG)
+FUNNEL_ENABLED = TENANT_CONFIG.get('funnel', {}).get('enabled', True)
+FUNNEL_DEFINITIONS = _build_funnel_definitions(TENANT_CONFIG) if FUNNEL_ENABLED else ''
+FUNNEL_PROMPT_BLOCK = _build_funnel_prompt_block(FUNNEL_DEFINITIONS) if FUNNEL_ENABLED else ''
+FUNNEL_JSON_KEYS = (
+    "- funnel_stage: one of 'TOFU', 'MOFU', 'BOFU'\n"
+    "- funnel_reason: one sentence, why this stage fits, in plain terms\n"
+) if FUNNEL_ENABLED else ''
 CAPTION_INSTRUCTION = _build_caption_instruction(TENANT_CONFIG)
 
 
@@ -133,19 +171,14 @@ def generate_video_script(article_body_html: str, cluster: dict, seo_title: str,
         "- No AI-tell phrases: delve, leverage, robust, testament to, in today's fast-paced world, game-changing.\n"
         "- Each section gets a loose visual suggestion, achievable with existing footage — never demand a "
         "shot that doesn't exist yet — but the visual is secondary to the actual spoken content this time.\n\n"
-        f"FUNNEL CLASSIFICATION — this is 618 Media's real funnel system, not a generic marketing framework:\n"
-        f"{FUNNEL_DEFINITIONS}\n"
-        "Decide which stage this specific script actually fits, based on what it does, not what would be "
-        "nice. Most article-derived scripts land TOFU or MOFU — only classify BOFU if the script genuinely "
-        "includes real client proof (it should not invent any).\n\n"
+        + FUNNEL_PROMPT_BLOCK +
         "Return ONLY a JSON object with these exact keys:\n"
         "- sections: array of objects, each with 'label' (e.g. 'Hook', 'Point 1', 'Point 2', 'Close'), "
         "'script' (the full word-for-word text for this section, real sentences), 'visual' (loose B-roll/shot "
         "suggestion)\n"
         "- total_duration: string estimate e.g. '75s'\n"
         "- word_count: integer, total words across all sections\n"
-        "- funnel_stage: one of 'TOFU', 'MOFU', 'BOFU'\n"
-        "- funnel_reason: one sentence, why this stage fits, in plain terms\n"
+        + FUNNEL_JSON_KEYS
         + CAPTION_INSTRUCTION
     )
 
